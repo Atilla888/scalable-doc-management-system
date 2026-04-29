@@ -1,3 +1,25 @@
+:root {
+	/* Core palette */
+	--color-primary: #1E3A8A; /* Deep Blue */
+	--color-secondary: #3B82F6; /* Blue */
+	--color-accent: #10B981; /* Green for success/actions */
+	--color-background: #F9FAFB; /* Light gray */
+	--color-surface: #FFFFFF; /* Surface (cards) */
+	--text-primary: #111827; /* Dark gray */
+	--text-secondary: #6B7280;
+	--color-error: #EF4444;
+	--color-warning: #F59E0B;
+
+	/* Helpful aliases and UI tokens used across the app */
+	--accent: var(--color-accent);
+	--accent-bg: rgba(59, 130, 246, 0.08); /* subtle bg for accent/secondary */
+	--accent-border: rgba(59, 130, 246, 0.2);
+	--border: #E5E7EB;
+	--text-h: var(--text-primary);
+	--social-bg: #F3F4F6;
+	--shadow: 0 6px 20px rgba(17, 24, 39, 0.06);
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
