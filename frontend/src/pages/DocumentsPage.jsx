@@ -61,7 +61,7 @@ const DocumentsPage = () => {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="rounded-sm border border-[#6b6b6b] bg-surface p-4 shadow-sm">
+        <aside className="rounded-sm border border-border bg-surface p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-text">Folder Tree</h2>
           <ul className="mt-4 space-y-1">
             {folderTree.map((node) => (
@@ -70,16 +70,16 @@ const DocumentsPage = () => {
           </ul>
         </aside>
 
-        <section className="rounded-sm border border-[#6b6b6b] bg-surface shadow-sm">
-          <div className="border-b border-[#6b6b6b] px-4 py-3 text-sm text-text">
+        <section className="rounded-sm border border-border bg-surface shadow-sm">
+          <div className="border-b border-border px-4 py-3 text-sm text-text">
             Root <span className="px-2 text-text-secondary">›</span> EAP Category 12 — Building <span className="px-2 text-text-secondary">›</span> Case Folder 2024-031
           </div>
 
-          <div className="flex flex-wrap gap-4 border-b border-[#6b6b6b] px-4 py-3">
-            <button className="min-w-48 border border-[#6b6b6b] bg-background px-8 py-3 text-sm text-text transition hover:bg-surface">
+          <div className="flex flex-wrap gap-4 border-b border-border px-4 py-3">
+            <button className="min-w-48 border border-border bg-background px-8 py-3 text-sm text-text transition hover:bg-surface">
               + Create Folder
             </button>
-            <button className="min-w-48 border border-[#6b6b6b] bg-background px-8 py-3 text-sm text-text transition hover:bg-surface">
+            <button className="min-w-48 border border-border bg-background px-8 py-3 text-sm text-text transition hover:bg-surface">
               ↑ Upload Document
             </button>
           </div>
@@ -88,25 +88,25 @@ const DocumentsPage = () => {
             <table className="min-w-full border-collapse text-sm text-text">
               <thead>
                 <tr className="bg-background text-left">
-                  <th className="border-b border-r border-[#cfcfcf] px-3 py-3 font-semibold">Type</th>
-                  <th className="border-b border-r border-[#cfcfcf] px-3 py-3 font-semibold">Name</th>
-                  <th className="border-b border-r border-[#cfcfcf] px-3 py-3 font-semibold">EAP Num.</th>
-                  <th className="border-b border-r border-[#cfcfcf] px-3 py-3 font-semibold">Type</th>
-                  <th className="border-b border-r border-[#cfcfcf] px-3 py-3 font-semibold">OCR</th>
-                  <th className="border-b border-r border-[#cfcfcf] px-3 py-3 font-semibold">Updated</th>
-                  <th className="border-b border-[#cfcfcf] px-3 py-3 font-semibold">Act.</th>
+                  <th className="border-b border-r border-border px-3 py-3 font-semibold">Type</th>
+                  <th className="border-b border-r border-border px-3 py-3 font-semibold">Name</th>
+                  <th className="border-b border-r border-border px-3 py-3 font-semibold">EAP Num.</th>
+                  <th className="border-b border-r border-border px-3 py-3 font-semibold">Type</th>
+                  <th className="border-b border-r border-border px-3 py-3 font-semibold">OCR</th>
+                  <th className="border-b border-r border-border px-3 py-3 font-semibold">Updated</th>
+                  <th className="border-b border-border px-3 py-3 font-semibold">Act.</th>
                 </tr>
               </thead>
               <tbody>
                 {documents.map((row) => (
                   <tr key={`${row.type}-${row.name}`} className="hover:bg-background/60">
-                    <td className="border-b border-r border-[#cfcfcf] px-3 py-3">{row.type}</td>
-                    <td className="border-b border-r border-[#cfcfcf] px-3 py-3">{row.name}</td>
-                    <td className="border-b border-r border-[#cfcfcf] px-3 py-3">{row.eapNum}</td>
-                    <td className="border-b border-r border-[#cfcfcf] px-3 py-3">{row.docType}</td>
-                    <td className="border-b border-r border-[#cfcfcf] px-3 py-3">{row.ocr}</td>
-                    <td className="border-b border-r border-[#cfcfcf] px-3 py-3">{row.updated}</td>
-                    <td className="border-b border-[#cfcfcf] px-3 py-3 text-center">■</td>
+                    <td className="border-b border-r border-border px-3 py-3">{row.type}</td>
+                    <td className="border-b border-r border-border px-3 py-3">{row.name}</td>
+                    <td className="border-b border-r border-border px-3 py-3">{row.eapNum}</td>
+                    <td className="border-b border-r border-border px-3 py-3">{row.docType}</td>
+                    <td className="border-b border-r border-border px-3 py-3">{row.ocr}</td>
+                    <td className="border-b border-r border-border px-3 py-3">{row.updated}</td>
+                    <td className="border-b border-border px-3 py-3 text-center text-primary">■</td>
                   </tr>
                 ))}
               </tbody>

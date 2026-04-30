@@ -9,6 +9,7 @@ export default {
         accent: 'var(--color-accent)',
         background: 'var(--color-background)',
         surface: 'var(--color-surface)',
+        border: 'var(--border)',
         text: {
           DEFAULT: 'var(--text-primary)',
           secondary: 'var(--text-secondary)'
