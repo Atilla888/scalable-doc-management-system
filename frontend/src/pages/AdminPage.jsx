@@ -1,5 +1,3 @@
-import React from "react";
-
 const users = [
   { name: "Anna Keller", role: "DMS_ADMIN", unit: "Central IT", status: "Active" },
   { name: "Moritz Bauer", role: "DMS_DOCUMENT_VIEWER", unit: "Building Dept.", status: "Active" },

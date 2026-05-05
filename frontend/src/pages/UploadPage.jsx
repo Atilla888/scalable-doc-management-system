@@ -1,5 +1,3 @@
-import React from "react";
-
 const uploadSteps = [
   { title: "Select file", detail: "Choose a PDF, scan, XML, or JSON document." },
   { title: "Enter metadata", detail: "Set title, EAP number, folder, and permissions." },

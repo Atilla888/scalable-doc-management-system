@@ -1,5 +1,3 @@
-import React from "react";
-
 const endpoints = [
   { method: "GET", path: "/api/auth/me", description: "Current user profile and roles" },
   { method: "GET", path: "/api/folders", description: "List folder tree entries" },

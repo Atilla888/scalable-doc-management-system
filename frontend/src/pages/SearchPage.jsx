@@ -1,5 +1,3 @@
-import React from "react";
-
 const searchResults = [
   {
     title: "Permit_2024-031.pdf",
