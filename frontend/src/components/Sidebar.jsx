@@ -1,32 +1,37 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
-const navigationItems = [
-  { label: "Home", to: "/" },
-  { label: "Dashboard", to: "/dashboard" },
-  { label: "Documents", to: "/documents" },
-  { label: "Search", to: "/search" },
-  { label: "Upload", to: "/upload" },
+const baseNavItems = [
+  { label: "Dashboard",  to: "/dashboard" },
+  { label: "Documents",  to: "/documents" },
+  { label: "Search",     to: "/search" },
+  { label: "Upload",     to: "/upload" },
   { label: "OCR Status", to: "/ocr-status" },
-  { label: "Admin", to: "/admin" },
   { label: "API / CMIS", to: "/api-cmis" },
 ];
 
 const Sidebar = () => {
+  const { hasRole } = useAuth();
+
+  const navItems = [
+    ...baseNavItems,
+    ...(hasRole("DMS_ADMIN") ? [{ label: "Admin", to: "/admin" }] : []),
+  ];
+
   return (
     <aside className="flex h-full w-72 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface">
       <div className="border-b border-border px-5 py-5">
         <div className="inline-flex items-center rounded-xl border border-border bg-background px-4 py-3 text-sm font-semibold tracking-wide text-text">
-          DMS LOGO
+          DMS
         </div>
       </div>
 
       <nav className="flex-1 space-y-2 px-4 py-5">
-        {navigationItems.map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === "/"}
             className={({ isActive }) =>
               [
                 "block rounded-xl border px-4 py-3 text-sm font-medium transition",

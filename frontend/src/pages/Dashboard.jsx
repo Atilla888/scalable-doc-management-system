@@ -1,4 +1,6 @@
 import React from "react";
+import { useAuth } from "../context/AuthContext";
+
 const tableRows = [
   {
     title: "Invoice Batch April",
@@ -31,11 +33,22 @@ const tableRows = [
 ];
 
 const Dashboard = () => {
+  const { user, roles } = useAuth();
+  const displayName = user?.preferred_username ?? user?.name ?? "User";
+  const primaryRole = roles.find((r) => r.startsWith("DMS_")) ?? "";
+
   return (
     <div className="space-y-6">
       <div>
         <p className="text-sm font-medium text-text-secondary">Dashboard</p>
-        <h1 className="mt-2 text-3xl font-semibold text-text">Welcome ABC</h1>
+        <h1 className="mt-2 text-3xl font-semibold text-text">
+          Welcome, {displayName}
+          {primaryRole && (
+            <span className="ml-3 text-base font-normal text-text-secondary">
+              ({primaryRole.replace("DMS_", "").replace(/_/g, " ")})
+            </span>
+          )}
+        </h1>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
