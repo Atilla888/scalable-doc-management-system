@@ -1,5 +1,3 @@
-import React from "react";
-
 const SectionPage = ({ title, description }) => {
   return (
     <div className="space-y-6">

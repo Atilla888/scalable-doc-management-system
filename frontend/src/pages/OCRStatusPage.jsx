@@ -1,5 +1,3 @@
-import React from "react";
-
 const jobs = [
   { id: "OCR-1001", file: "Permit_2024-031.pdf", status: "Completed", started: "09:12", finished: "09:18" },
   { id: "OCR-1002", file: "Inspection_A12.tif", status: "Processing", started: "10:02", finished: "—" },
