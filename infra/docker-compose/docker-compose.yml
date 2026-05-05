@@ -1,0 +1,14 @@
+services:
+
+  frontend:
+    build:
+      context: ../../frontend
+      target: dev          # use 'prod' for a production nginx build
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../../frontend:/app          # hot-reload: changes reflect instantly
+      - /app/node_modules            # keep the container's node_modules isolated
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
