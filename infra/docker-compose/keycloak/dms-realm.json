@@ -1,0 +1,115 @@
+{
+  "realm": "dms",
+  "displayName": "DMS Realm",
+  "enabled": true,
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "sslRequired": "none",
+  "accessTokenLifespan": 3600,
+  "roles": {
+    "realm": [
+      { "name": "DMS_ADMIN",              "description": "Full administrative access to the DMS" },
+      { "name": "DMS_DEPARTMENT_MANAGER", "description": "Manage documents within own department" },
+      { "name": "DMS_DOCUMENT_EDITOR",   "description": "Upload and edit documents" },
+      { "name": "DMS_DOCUMENT_VIEWER",   "description": "Read-only access to permitted documents" },
+      { "name": "DMS_AUDITOR",           "description": "Audit trail and reporting access" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "dms-frontend",
+      "name": "DMS Frontend",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:80/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:80"
+      ],
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "dms-backend",
+      "name": "DMS Backend",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "dms-backend-secret-change-in-prod",
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@dms.local",
+      "firstName": "Admin",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "admin123", "temporary": false }
+      ],
+      "realmRoles": ["DMS_ADMIN"]
+    },
+    {
+      "username": "manager",
+      "email": "manager@dms.local",
+      "firstName": "Department",
+      "lastName": "Manager",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "manager123", "temporary": false }
+      ],
+      "realmRoles": ["DMS_DEPARTMENT_MANAGER"]
+    },
+    {
+      "username": "editor",
+      "email": "editor@dms.local",
+      "firstName": "Document",
+      "lastName": "Editor",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "editor123", "temporary": false }
+      ],
+      "realmRoles": ["DMS_DOCUMENT_EDITOR"]
+    },
+    {
+      "username": "viewer",
+      "email": "viewer@dms.local",
+      "firstName": "Document",
+      "lastName": "Viewer",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "viewer123", "temporary": false }
+      ],
+      "realmRoles": ["DMS_DOCUMENT_VIEWER"]
+    },
+    {
+      "username": "auditor",
+      "email": "auditor@dms.local",
+      "firstName": "System",
+      "lastName": "Auditor",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "auditor123", "temporary": false }
+      ],
+      "realmRoles": ["DMS_AUDITOR"]
+    }
+  ]
+}

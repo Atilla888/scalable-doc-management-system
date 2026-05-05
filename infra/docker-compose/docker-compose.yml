@@ -1,14 +1,55 @@
 services:
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    command: start-dev --import-realm --health-enabled=true
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8080
+      KC_MANAGEMENT_PORT: 9000
+    volumes:
+      - ./keycloak/dms-realm.json:/opt/keycloak/data/import/dms-realm.json:ro
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    restart: unless-stopped
+
   frontend:
     build:
       context: ../../frontend
-      target: dev          # use 'prod' for a production nginx build
+      target: dev
     ports:
       - "5173:5173"
     volumes:
-      - ../../frontend:/app          # hot-reload: changes reflect instantly
-      - /app/node_modules            # keep the container's node_modules isolated
+      - ../../frontend:/app
+      - /app/node_modules
     environment:
       - NODE_ENV=development
+      - VITE_KEYCLOAK_URL=http://localhost:8080
+      - VITE_KEYCLOAK_REALM=dms
+      - VITE_KEYCLOAK_CLIENT_ID=dms-frontend
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../../backend
+      target: prod
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/dms
+      - SERVER_PORT=8081
+    depends_on:
+      keycloak:
+        condition: service_healthy
     restart: unless-stopped
