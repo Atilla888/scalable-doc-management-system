@@ -11,6 +11,20 @@ function extractRoles(kc) {
   return kc.tokenParsed?.realm_access?.roles ?? []
 }
 
+function startTokenRefresh(intervalRef) {
+  stopTokenRefresh(intervalRef)
+  intervalRef.current = setInterval(() => {
+    keycloak.updateToken(60).catch(() => keycloak.logout())
+  }, 30_000)
+}
+
+function stopTokenRefresh(intervalRef) {
+  if (intervalRef.current) {
+    clearInterval(intervalRef.current)
+    intervalRef.current = null
+  }
+}
+
 export function AuthProvider({ children }) {
   const [initialized, setInitialized] = useState(false)
   const [authenticated, setAuthenticated] = useState(false)
@@ -30,7 +44,7 @@ export function AuthProvider({ children }) {
         if (isAuthenticated) {
           setUser(keycloak.tokenParsed)
           setRoles(extractRoles(keycloak))
-          startTokenRefresh()
+          startTokenRefresh(refreshIntervalRef)
         }
         setInitialized(true)
       })
@@ -42,37 +56,22 @@ export function AuthProvider({ children }) {
       setAuthenticated(true)
       setUser(keycloak.tokenParsed)
       setRoles(extractRoles(keycloak))
-      startTokenRefresh()
+      startTokenRefresh(refreshIntervalRef)
     }
 
     keycloak.onAuthLogout = () => {
       setAuthenticated(false)
       setUser(null)
       setRoles([])
-      stopTokenRefresh()
+      stopTokenRefresh(refreshIntervalRef)
     }
 
     keycloak.onTokenExpired = () => {
       keycloak.updateToken(30).catch(() => keycloak.logout())
     }
 
-    return () => stopTokenRefresh()
+    return () => stopTokenRefresh(refreshIntervalRef)
   }, [])
-
-  function startTokenRefresh() {
-    stopTokenRefresh()
-    // Refresh the token every 30 seconds if it will expire within 60 seconds
-    refreshIntervalRef.current = setInterval(() => {
-      keycloak.updateToken(60).catch(() => keycloak.logout())
-    }, 30_000)
-  }
-
-  function stopTokenRefresh() {
-    if (refreshIntervalRef.current) {
-      clearInterval(refreshIntervalRef.current)
-      refreshIntervalRef.current = null
-    }
-  }
 
   function logout() {
     keycloak.logout({ redirectUri: window.location.origin + '/login' })

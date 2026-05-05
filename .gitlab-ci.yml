@@ -1,0 +1,74 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+stages:
+  - validate
+  - build
+  - test
+
+default:
+  interruptible: true
+
+check-structure:
+  stage: validate
+  image: debian:trixie-slim
+  script:
+    - |
+      FAILED=0
+      check() {
+        if [ -e "$1" ]; then
+          echo "OK  $1"
+        else
+          echo "MISSING  $1"
+          FAILED=1
+        fi
+      }
+      check frontend/
+      check frontend/src/
+      check frontend/package.json
+      check backend/
+      check backend/pom.xml
+      check infra/docker-compose/docker-compose.yml
+      check infra/docker-compose/keycloak/dms-realm.json
+      check README.md
+      [ "$FAILED" -eq 0 ] && echo "All checks passed." || exit 1
+
+frontend-build:
+  stage: build
+  image: node:lts-trixie-slim
+  cache:
+    key: "frontend-$CI_COMMIT_REF_SLUG"
+    paths:
+      - frontend/node_modules/
+  script:
+    - cd frontend
+    - npm ci
+    - npm run build
+
+backend-build:
+  stage: build
+  image: maven:3.9-eclipse-temurin-21
+  cache:
+    key: "backend-$CI_COMMIT_REF_SLUG"
+    paths:
+      - backend/.m2/
+  script:
+    - cd backend
+    - mvn package -DskipTests --batch-mode -Dmaven.repo.local=.m2
+
+frontend-lint:
+  stage: test
+  image: node:lts-trixie-slim
+  cache:
+    key: "frontend-$CI_COMMIT_REF_SLUG"
+    paths:
+      - frontend/node_modules/
+    policy: pull
+  needs:
+    - frontend-build
+  script:
+    - cd frontend
+    - npm ci
+    - npm run lint
