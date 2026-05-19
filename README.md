@@ -14,7 +14,9 @@ docker compose down -v
 docker compose up --build
 ```
 
-After containers are healthy, use the frontend at http://localhost:5173, the API at http://localhost:8081, and Keycloak at http://localhost:8080. The first `down -v` wipes old container data so the realm import runs cleanly on a fresh machine.
+After containers are healthy, use the frontend at http://localhost:5173, the API at http://localhost:8081, Keycloak at http://localhost:8080, and MongoDB on port 27017. The init script `scripts/mongo-init.js` runs automatically on first boot (empty volume) and creates collections, indexes, and the root folder `/`.
+
+The first `down -v` wipes old container data so the realm import and MongoDB initialization run cleanly on a fresh machine.
 
 ## Demo accounts (development only)
 
@@ -53,5 +55,7 @@ Expected body: `{"status":"ok"}`.
 - `infra/keycloak/` — realm export for automatic import.
 - `infra/docker-compose/` — local development compose file.
 - `scripts/` — database initialization helpers.
+
+To verify MongoDB after a fresh start: `docker compose exec mongodb mongosh dms --eval "db.folders.getIndexes()"`, then `db.folders.findOne({ path: '/' })`.
 
 Backend-specific build and test instructions are in `backend/README.md`.

@@ -4,9 +4,9 @@ Spring Boot 3.4 on Java 21. The API validates Keycloak JWTs as an OAuth2 resourc
 
 ## Run with Docker Compose
 
-The usual way to develop is from the repository root: start the full stack with `docker compose` under `infra/docker-compose` (see the root README). The backend listens on port 8081.
+The usual way to develop is from the repository root: start the full stack with `docker compose` under `infra/docker-compose` (see the root README). The backend listens on port 8081 and connects to MongoDB at `mongodb://mongodb:27017/dms`.
 
-Inside Compose, tokens from the browser use issuer `http://localhost:8080/realms/dms`, while the JVM fetches signing keys from `http://keycloak:8080/.../certs` via `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI` so signature verification works across hostnames.
+On first start with an empty volume, `scripts/mongo-init.js` creates the `dms` database (collections, indexes, root folder). Inside Compose, JWT issuer is `http://localhost:8080/realms/dms` while JWKS is fetched from `http://keycloak:8080/.../certs`.
 
 ## Run the API alone
 
@@ -38,4 +38,6 @@ You do not need Maven installed globally. From this directory:
 mvnw.cmd test
 ```
 
-On Linux or macOS: `./mvnw test`. Tests cover JWT role extraction, missing or invalid tokens (401), public `/health`, and admin route protection. They use a test `JwtDecoder` so Keycloak does not need to run during `mvn test`.
+On Linux or macOS: `./mvnw test`. Tests cover JWT role extraction, missing or invalid tokens (401), public `/health`, admin route protection, and MongoDB initialization.
+
+MongoDB tests: `MongoInitializationLocalTest` connects to `mongodb://localhost:27017/dms` while Compose is running (recommended on Windows). `MongoInitializationTest` uses Testcontainers when the JVM can reach Docker; if those six tests are skipped but `docker ps` works, use the local test — Docker CLI and Testcontainers use different APIs on some Docker Desktop versions.

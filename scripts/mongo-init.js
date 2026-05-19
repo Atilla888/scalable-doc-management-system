@@ -85,3 +85,6 @@ db.folders.updateOne(
 
     { upsert: true }
 );
+
+// GridFS (fs.files / fs.chunks) is not pre-created; MongoDB creates those collections on first GridFS write.
+print("DMS database initialized: collections, indexes, and root folder (path=/).");
