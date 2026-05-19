@@ -41,8 +41,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Health / actuator — publicly accessible for probes
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                // Admin endpoints — DMS_ADMIN only
-                .requestMatchers("/api/admin/**").hasAuthority("DMS_ADMIN")
+                // Admin endpoints — dms_admin only
+                .requestMatchers("/api/admin/**").hasAuthority("dms_admin")
                 // All other API endpoints — any authenticated user
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().authenticated()
@@ -59,7 +59,7 @@ public class SecurityConfig {
      * to Spring Security GrantedAuthority objects.
      *
      * Keycloak token structure:
-     *   "realm_access": { "roles": ["DMS_ADMIN", "DMS_DOCUMENT_VIEWER", ...] }
+     *   "realm_access": { "roles": ["dms_admin", "dms_viewer", ...] }
      */
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
