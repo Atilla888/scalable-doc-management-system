@@ -15,7 +15,7 @@ const Sidebar = () => {
 
   const navItems = [
     ...baseNavItems,
-    ...(hasRole("DMS_ADMIN") ? [{ label: "Admin", to: "/admin" }] : []),
+    ...(hasRole("dms_admin") ? [{ label: "Admin", to: "/admin" }] : []),
   ];
 
   return (

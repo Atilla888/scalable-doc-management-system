@@ -8,8 +8,12 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HTTP_PORT: 8080
       KC_MANAGEMENT_PORT: 9000
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: false
+      KC_HTTP_ENABLED: true
     volumes:
-      - ./keycloak/dms-realm.json:/opt/keycloak/data/import/dms-realm.json:ro
+      - ../keycloak/dms-realm.json:/opt/keycloak/data/import/dms-realm.json:ro
     ports:
       - "8080:8080"
       - "9000:9000"
@@ -47,7 +51,8 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/dms
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://localhost:8080/realms/dms
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/dms/protocol/openid-connect/certs
       - SERVER_PORT=8081
     depends_on:
       keycloak:

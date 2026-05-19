@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -75,7 +76,9 @@ class AuthInfoControllerSecurityTest {
                 .build();
 
         mockMvc.perform(get("/api/admin/health")
-                        .with(SecurityMockMvcRequestPostProcessors.jwt().jwt(adminJwt)))
+                        .with(SecurityMockMvcRequestPostProcessors.jwt()
+                                .jwt(adminJwt)
+                                .authorities(new SimpleGrantedAuthority("dms_admin"))))
                 .andExpect(status().isNotFound());
     }
 }

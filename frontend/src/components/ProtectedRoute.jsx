@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
  * Wraps routes that require authentication.
  *
  * Props:
- *   requiredRole  – optional DMS role string (e.g. "DMS_ADMIN").
+ *   requiredRole  – optional DMS role string (e.g. "dms_admin").
  *                   If provided, users lacking the role are sent to /unauthorized.
  */
 export default function ProtectedRoute({ requiredRole }) {

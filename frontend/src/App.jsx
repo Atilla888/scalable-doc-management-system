@@ -46,7 +46,7 @@ export default function App() {
           <Route path="api-cmis" element={<ApiCmisPage />} />
 
           {/* Admin-only route */}
-          <Route element={<ProtectedRoute requiredRole="DMS_ADMIN" />}>
+          <Route element={<ProtectedRoute requiredRole="dms_admin" />}>
             <Route path="admin" element={<AdminPage />} />
           </Route>
         </Route>

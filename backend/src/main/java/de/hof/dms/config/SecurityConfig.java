@@ -39,8 +39,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Health / actuator — publicly accessible for probes
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                // Health — publicly accessible for probes
+                .requestMatchers("/health", "/actuator/health", "/actuator/info").permitAll()
                 // Admin endpoints — dms_admin only
                 .requestMatchers("/api/admin/**").hasAuthority("dms_admin")
                 // All other API endpoints — any authenticated user

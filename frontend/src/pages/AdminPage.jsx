@@ -1,7 +1,7 @@
 const users = [
-  { name: "Anna Keller", role: "DMS_ADMIN", unit: "Central IT", status: "Active" },
-  { name: "Moritz Bauer", role: "DMS_DOCUMENT_VIEWER", unit: "Building Dept.", status: "Active" },
-  { name: "Nina Hoffmann", role: "DMS_DOCUMENT_EDITOR", unit: "Land Registry", status: "Pending" },
+  { name: "Anna Keller", role: "dms_admin", unit: "Central IT", status: "Active" },
+  { name: "Moritz Bauer", role: "dms_viewer", unit: "Building Dept.", status: "Active" },
+  { name: "Nina Hoffmann", role: "dms_contributor", unit: "Land Registry", status: "Pending" },
 ];
 
 const permissions = [

@@ -34,7 +34,7 @@ const tableRows = [
 const Dashboard = () => {
   const { user, roles } = useAuth();
   const displayName = user?.preferred_username ?? user?.name ?? "User";
-  const primaryRole = roles.find((r) => r.startsWith("DMS_")) ?? "";
+  const primaryRole = roles.find((r) => r.startsWith("dms_")) ?? "";
 
   return (
     <div className="space-y-6">
@@ -44,7 +44,7 @@ const Dashboard = () => {
           Welcome, {displayName}
           {primaryRole && (
             <span className="ml-3 text-base font-normal text-text-secondary">
-              ({primaryRole.replace("DMS_", "").replace(/_/g, " ")})
+              ({primaryRole.replace("dms_", "").replace(/_/g, " ")})
             </span>
           )}
         </h1>
