@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(
     properties = {
+      "spring.profiles.active=no-mongo",
       "spring.autoconfigure.exclude="
           + "org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration,"
           + "org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration,"

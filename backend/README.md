@@ -28,6 +28,15 @@ On Linux or macOS use `./mvnw spring-boot:run`. If Keycloak is not on localhost:
 
 Any other path under `/api/**` requires authentication. Paths under `/api/admin/**` additionally require the `dms_admin` realm role. Spring maps Keycloak roles from `realm_access.roles` to authorities without a `ROLE_` prefix, so security expressions use `hasAuthority("dms_admin")`, not `hasRole(...)`.
 
+### Documents (multipart upload)
+
+All document routes require a Bearer token.
+
+- `POST /api/documents` — multipart fields: `file`, `title`, `documentType`, `parentId` (required); optional `description`, `eapCategory`, `inheritFromParent`. Stores the binary in GridFS, metadata in `documents`, and allocates an EAP number via `eap_sequences`. Response: `{ "id", "status": "UPLOADED", "ocrStatus" }`.
+- `GET /api/documents/{id}` — metadata only.
+- `GET /api/documents/{id}/download` — streams the GridFS file with the stored content type.
+- `DELETE /api/documents/{id}` — soft-delete (`document_status = deleted`); GridFS file is kept in MVP.
+
 Demo users and passwords are documented in the root README.
 
 ## Tests
@@ -38,6 +47,6 @@ You do not need Maven installed globally. From this directory:
 mvnw.cmd test
 ```
 
-On Linux or macOS: `./mvnw test`. Tests cover JWT role extraction, missing or invalid tokens (401), public `/health`, admin route protection, and MongoDB initialization.
+On Linux or macOS: `./mvnw test`. Tests cover JWT role extraction, missing or invalid tokens (401), public `/health`, admin route protection, MongoDB initialization, EAP number generation, and document upload/download/delete against Compose MongoDB (`DocumentApiIntegrationTest`, `EapNumberServiceTest`).
 
 MongoDB tests: `MongoInitializationLocalTest` connects to `mongodb://localhost:27017/dms` while Compose is running (recommended on Windows). `MongoInitializationTest` uses Testcontainers when the JVM can reach Docker; if those six tests are skipped but `docker ps` works, use the local test — Docker CLI and Testcontainers use different APIs on some Docker Desktop versions.

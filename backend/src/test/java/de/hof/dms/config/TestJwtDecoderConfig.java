@@ -20,6 +20,7 @@ import java.util.Map;
 public class TestJwtDecoderConfig {
 
     public static final String VALID_TOKEN = "valid-test-token";
+    public static final String CONTRIBUTOR_TOKEN = "contributor-test-token";
     public static final String EXPIRED_TOKEN = "expired-test-token";
     public static final String WRONG_ISSUER_TOKEN = "wrong-issuer-test-token";
 
@@ -30,6 +31,7 @@ public class TestJwtDecoderConfig {
     JwtDecoder jwtDecoder() {
         return token -> switch (token) {
             case VALID_TOKEN -> validJwt(EXPECTED_ISSUER);
+            case CONTRIBUTOR_TOKEN -> contributorJwt(EXPECTED_ISSUER);
             case EXPIRED_TOKEN -> throw new BadJwtException("Token expired");
             case WRONG_ISSUER_TOKEN -> throw new JwtValidationException(
                     "Invalid issuer",
@@ -49,6 +51,19 @@ public class TestJwtDecoderConfig {
                 .subject("viewer-id")
                 .claim("preferred_username", "viewer")
                 .claim("realm_access", Map.of("roles", List.of("dms_viewer")))
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .build();
+    }
+
+    static Jwt contributorJwt(String issuer) {
+        return Jwt.withTokenValue(CONTRIBUTOR_TOKEN)
+                .header("alg", "none")
+                .issuer(issuer)
+                .subject("contributor-id")
+                .claim("preferred_username", "contributor")
+                .claim("department", "ITDLZ")
+                .claim("realm_access", Map.of("roles", List.of("dms_contributor")))
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(3600))
                 .build();
