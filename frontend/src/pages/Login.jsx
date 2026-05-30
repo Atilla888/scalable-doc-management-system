@@ -13,7 +13,7 @@ const Login = () => {
   }
 
   if (authenticated) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/" replace />
   }
 
   return (

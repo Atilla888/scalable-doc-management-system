@@ -21,7 +21,7 @@ const Layout = () => {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-20 items-center justify-between border-b border-border bg-surface px-6 shadow-sm">
-          <Link to="/dashboard" className="text-lg font-semibold tracking-wide text-text">
+          <Link to="/" className="text-lg font-semibold tracking-wide text-text">
             [ DMS ]
           </Link>
 

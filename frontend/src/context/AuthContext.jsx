@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import keycloak from '../keycloak'
+import { initKeycloak } from '../auth/keycloakAuth'
 
 const AuthContext = createContext(null)
 
@@ -33,12 +34,12 @@ export function AuthProvider({ children }) {
   const refreshIntervalRef = useRef(null)
 
   useEffect(() => {
-    keycloak
-      .init({
-        onLoad: 'check-sso',
-        silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
-        pkceMethod: 'S256',
-      })
+    initKeycloak({
+      onLoad: 'check-sso',
+      silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
+      pkceMethod: 'S256',
+      checkLoginIframe: false,
+    })
       .then((isAuthenticated) => {
         setAuthenticated(isAuthenticated)
         if (isAuthenticated) {

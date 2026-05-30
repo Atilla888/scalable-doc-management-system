@@ -16,6 +16,20 @@ docker compose up --build
 
 After containers are healthy, use the frontend at http://localhost:5173, the API at http://localhost:8081, Keycloak at http://localhost:8080, and MongoDB on port 27017. The init script `scripts/mongo-init.js` runs automatically on first boot (empty volume) and creates collections, indexes, and the root folder `/`.
 
+The frontend reads all URLs from `VITE_*` environment variables (`VITE_API_BASE_URL`, `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT_ID`) — see `frontend/.env.example`. Compose sets these for you; for standalone `npm run dev`, copy `.env.example` to `.env.local`.
+
+## Main workflow (frontend)
+
+After signing in through Keycloak, the app exposes the core document workflow:
+
+- `/` — Dashboard: lists the root folder's subfolders and documents.
+- `/folders/:id` — Folder view with breadcrumb navigation; lists subfolders and documents the backend allows you to see.
+- `/documents/:id` — Document detail: metadata, OCR status (auto-refreshes while pending or processing), and a download button. A 403 from the backend shows a clear access-denied message instead of content.
+- `/upload` — Upload form: file picker plus title, document type, parent folder, and department; submits to `POST /api/documents` and shows the resulting OCR status.
+- `/search` — Full-text search over titles, EAP numbers, and OCR text; results link to document detail.
+
+Every API call attaches the Keycloak Bearer token. The UI never hides content with CSS — it renders exactly what the backend returns and relies on 401/403 responses.
+
 The first `down -v` wipes old container data so the realm import and MongoDB initialization run cleanly on a fresh machine.
 
 ## Demo accounts (development only)

@@ -2,12 +2,9 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const baseNavItems = [
-  { label: "Dashboard",  to: "/dashboard" },
-  { label: "Documents",  to: "/documents" },
-  { label: "Search",     to: "/search" },
-  { label: "Upload",     to: "/upload" },
-  { label: "OCR Status", to: "/ocr-status" },
-  { label: "API / CMIS", to: "/api-cmis" },
+  { label: "Dashboard", to: "/", end: true },
+  { label: "Search",    to: "/search" },
+  { label: "Upload",    to: "/upload" },
 ];
 
 const Sidebar = () => {
@@ -31,6 +28,7 @@ const Sidebar = () => {
           <NavLink
             key={item.to}
             to={item.to}
+            end={item.end}
             className={({ isActive }) =>
               [
                 "block rounded-xl border px-4 py-3 text-sm font-medium transition",
