@@ -5,8 +5,11 @@ import de.hof.dms.domain.DocumentRecord;
 import de.hof.dms.domain.Folder;
 import de.hof.dms.domain.FolderAccess;
 import de.hof.dms.domain.FolderAcl;
+import de.hof.dms.dto.AclDto;
 import de.hof.dms.dto.DocumentMetadataResponse;
 import de.hof.dms.dto.DocumentUploadResponse;
+import de.hof.dms.dto.MetadataUpdateRequest;
+import de.hof.dms.dto.PermissionsResponse;
 import de.hof.dms.exception.ApiException;
 import de.hof.dms.repository.DocumentRepository;
 import de.hof.dms.repository.FolderRepository;
@@ -41,16 +44,19 @@ public class DocumentService {
     private final FolderRepository folderRepository;
     private final GridFsTemplate gridFsTemplate;
     private final EapNumberService eapNumberService;
+    private final PermissionService permissionService;
 
     public DocumentService(
             DocumentRepository documentRepository,
             FolderRepository folderRepository,
             GridFsTemplate gridFsTemplate,
-            EapNumberService eapNumberService) {
+            EapNumberService eapNumberService,
+            PermissionService permissionService) {
         this.documentRepository = documentRepository;
         this.folderRepository = folderRepository;
         this.gridFsTemplate = gridFsTemplate;
         this.eapNumberService = eapNumberService;
+        this.permissionService = permissionService;
     }
 
     public DocumentUploadResponse upload(
@@ -75,6 +81,8 @@ public class DocumentService {
                                 () ->
                                         new ApiException(
                                                 HttpStatus.NOT_FOUND, "Parent folder not found"));
+
+        permissionService.requireFolder(user, parent, PermissionService.Action.CREATE);
 
         String category = eapCategory != null && !eapCategory.isBlank() ? eapCategory.trim() : "1000";
         String eapNumber = eapNumberService.generateNext(category, user.department());
@@ -119,13 +127,15 @@ public class DocumentService {
         return new DocumentUploadResponse(saved.getId(), UPLOAD_STATUS, saved.getOcrStatus());
     }
 
-    public DocumentMetadataResponse getMetadata(String id) {
+    public DocumentMetadataResponse getMetadata(String id, CurrentUser user) {
         DocumentRecord record = findActiveDocument(id);
+        permissionService.requireDocument(user, record, PermissionService.Action.READ);
         return DocumentMetadataResponse.from(record);
     }
 
-    public DownloadPayload download(String id) {
+    public DownloadPayload download(String id, CurrentUser user) {
         DocumentRecord record = findActiveDocument(id);
+        permissionService.requireDocument(user, record, PermissionService.Action.READ);
         GridFSFile gridFile =
                 gridFsTemplate.findOne(
                         Query.query(Criteria.where("_id").is(new ObjectId(record.getGridFsFileId()))));
@@ -141,10 +151,64 @@ public class DocumentService {
         return new DownloadPayload(gridFsResource, record.getContentType(), record.getFileName());
     }
 
-    public void delete(String id) {
+    public void delete(String id, CurrentUser user) {
         DocumentRecord record = findActiveDocument(id);
+        permissionService.requireDocument(user, record, PermissionService.Action.DELETE);
         record.setDocumentStatus(STATUS_DELETED);
         documentRepository.save(record);
+    }
+
+    public DocumentMetadataResponse updateMetadata(
+            String id, MetadataUpdateRequest request, CurrentUser user) {
+        DocumentRecord record = findActiveDocument(id);
+        permissionService.requireDocument(user, record, PermissionService.Action.UPDATE);
+
+        if (request != null) {
+            if (request.title() != null && !request.title().isBlank()) {
+                record.setTitle(request.title().trim());
+            }
+            if (request.description() != null) {
+                record.setDescription(request.description().trim());
+            }
+            if (request.documentType() != null && !request.documentType().isBlank()) {
+                record.setDocumentType(request.documentType().trim());
+            }
+        }
+        DocumentRecord saved = documentRepository.save(record);
+        return DocumentMetadataResponse.from(saved);
+    }
+
+    public PermissionsResponse getPermissions(String id, CurrentUser user) {
+        DocumentRecord record = findActiveDocument(id);
+        permissionService.requireDocument(user, record, PermissionService.Action.READ);
+
+        var effective =
+                new PermissionsResponse.EffectivePermissions(
+                        permissionService.canDocument(user, record, PermissionService.Action.READ),
+                        permissionService.canDocument(user, record, PermissionService.Action.CREATE),
+                        permissionService.canDocument(user, record, PermissionService.Action.UPDATE),
+                        permissionService.canDocument(user, record, PermissionService.Action.DELETE),
+                        permissionService.canDocument(
+                                user, record, PermissionService.Action.MANAGE_PERMISSIONS));
+
+        // Full ACL only for admins or users with managePermissions on the document.
+        AclDto acl =
+                permissionService.canManageDocument(user, record)
+                        ? AclDto.from(record.getAcl())
+                        : null;
+        return new PermissionsResponse(effective, acl);
+    }
+
+    public AclDto updatePermissions(String id, AclDto request, CurrentUser user) {
+        DocumentRecord record = findActiveDocument(id);
+        permissionService.requireDocument(
+                user, record, PermissionService.Action.MANAGE_PERMISSIONS);
+        if (request == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "ACL payload is required");
+        }
+        record.setAcl(request.toAcl());
+        DocumentRecord saved = documentRepository.save(record);
+        return AclDto.from(saved.getAcl());
     }
 
     private DocumentRecord findActiveDocument(String id) {
@@ -184,51 +248,33 @@ public class DocumentService {
         return OCR_NOT_REQUIRED;
     }
 
+    /**
+     * Default ACL for a freshly uploaded document. It is private to its owner
+     * (the uploader) — owners always get full access via the RBAC owner rule,
+     * and admins/department managers via their role rules. When
+     * {@code inheritFromParent} is true, the resolver additionally walks up to
+     * the parent folder's ACL, so colleagues who can read the folder can read
+     * the document. Broader sharing is granted explicitly via
+     * PUT /api/documents/{id}/permissions.
+     */
     private FolderAcl buildDocumentAcl(CurrentUser user, Folder parent, boolean inheritFromParent) {
         FolderAcl acl = new FolderAcl();
         acl.setOwner(user.username());
         acl.setOwnerDepartment(user.department());
         acl.setAllowedUserIds(new ArrayList<>(List.of(user.username())));
-        acl.setAllowedRoles(new ArrayList<>(user.roles()));
-        if (user.department() != null && !user.department().isBlank()) {
-            acl.setAllowedDepartments(new ArrayList<>(List.of(user.department())));
-        } else {
-            acl.setAllowedDepartments(new ArrayList<>());
-        }
+        acl.setAllowedRoles(new ArrayList<>());
+        acl.setAllowedDepartments(new ArrayList<>());
 
         FolderAccess access = new FolderAccess();
         access.setRead(true);
         access.setCreate(false);
         access.setUpdate(true);
         access.setDelete(true);
-        access.setManagePermissions(false);
+        access.setManagePermissions(true);
         acl.setAccess(access);
-        acl.setInheritFromParent(false);
 
-        FolderAcl parentAcl = parent.getAcl();
-        if (inheritFromParent && parentAcl != null) {
-            if (parentAcl.getAllowedRoles() != null) {
-                acl.setAllowedRoles(new ArrayList<>(parentAcl.getAllowedRoles()));
-            }
-            if (parentAcl.getAllowedDepartments() != null) {
-                acl.setAllowedDepartments(new ArrayList<>(parentAcl.getAllowedDepartments()));
-            }
-            if (parentAcl.getAccess() != null) {
-                acl.setAccess(copyAccess(parentAcl.getAccess()));
-            }
-        }
-
+        acl.setInheritFromParent(inheritFromParent);
         return acl;
-    }
-
-    private FolderAccess copyAccess(FolderAccess source) {
-        FolderAccess access = new FolderAccess();
-        access.setRead(source.isRead());
-        access.setCreate(source.isCreate());
-        access.setUpdate(source.isUpdate());
-        access.setDelete(source.isDelete());
-        access.setManagePermissions(source.isManagePermissions());
-        return access;
     }
 
     private org.bson.Document metadataFor(CurrentUser user, String title) {

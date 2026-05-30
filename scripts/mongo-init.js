@@ -62,18 +62,24 @@ db.folders.updateOne(
 
                 allowed_user_ids: [],
 
+                // All authenticated roles may READ the root listing; write actions
+                // are decided by the RBAC resolver (admin, department manager,
+                // contributor-create, or explicit ACLs on child items).
                 allowed_roles: [
-                    "dms_admin"
+                    "dms_admin",
+                    "dms_department_manager",
+                    "dms_contributor",
+                    "dms_viewer"
                 ],
 
                 allowed_departments: [],
 
                 access: {
                     read: true,
-                    create: true,
-                    update: true,
+                    create: false,
+                    update: false,
                     delete: false,
-                    managePermissions: true
+                    managePermissions: false
                 },
 
                 inheritFromParent: false

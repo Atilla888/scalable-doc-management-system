@@ -21,6 +21,8 @@ public class TestJwtDecoderConfig {
 
     public static final String VALID_TOKEN = "valid-test-token";
     public static final String CONTRIBUTOR_TOKEN = "contributor-test-token";
+    public static final String ADMIN_TOKEN = "admin-test-token";
+    public static final String MANAGER_TOKEN = "manager-test-token";
     public static final String EXPIRED_TOKEN = "expired-test-token";
     public static final String WRONG_ISSUER_TOKEN = "wrong-issuer-test-token";
 
@@ -32,6 +34,8 @@ public class TestJwtDecoderConfig {
         return token -> switch (token) {
             case VALID_TOKEN -> validJwt(EXPECTED_ISSUER);
             case CONTRIBUTOR_TOKEN -> contributorJwt(EXPECTED_ISSUER);
+            case ADMIN_TOKEN -> roleJwt(ADMIN_TOKEN, "admin", null, "dms_admin");
+            case MANAGER_TOKEN -> roleJwt(MANAGER_TOKEN, "manager", "ITDLZ", "dms_department_manager");
             case EXPIRED_TOKEN -> throw new BadJwtException("Token expired");
             case WRONG_ISSUER_TOKEN -> throw new JwtValidationException(
                     "Invalid issuer",
@@ -54,6 +58,22 @@ public class TestJwtDecoderConfig {
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(3600))
                 .build();
+    }
+
+    static Jwt roleJwt(String token, String username, String department, String role) {
+        var builder =
+                Jwt.withTokenValue(token)
+                        .header("alg", "none")
+                        .issuer(EXPECTED_ISSUER)
+                        .subject(username + "-id")
+                        .claim("preferred_username", username)
+                        .claim("realm_access", Map.of("roles", List.of(role)))
+                        .issuedAt(Instant.now())
+                        .expiresAt(Instant.now().plusSeconds(3600));
+        if (department != null) {
+            builder.claim("department", department);
+        }
+        return builder.build();
     }
 
     static Jwt contributorJwt(String issuer) {
