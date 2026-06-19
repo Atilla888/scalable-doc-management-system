@@ -53,6 +53,9 @@ public class DocumentRecord {
     @Field("ocr_status")
     private String ocrStatus;
 
+    @Field("ocr_text")
+    private String ocrText;
+
     @Field("indexing_status")
     private String indexingStatus;
 
@@ -177,6 +180,14 @@ public class DocumentRecord {
 
     public void setOcrStatus(String ocrStatus) {
         this.ocrStatus = ocrStatus;
+    }
+
+    public String getOcrText() {
+        return ocrText;
+    }
+
+    public void setOcrText(String ocrText) {
+        this.ocrText = ocrText;
     }
 
     public String getIndexingStatus() {
