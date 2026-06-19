@@ -78,5 +78,16 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  ocr-worker:
+    build:
+      context: ../../ocr-worker
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/dms
+      - OCR_POLL_INTERVAL_MS=5000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   mongodb_data:

@@ -66,6 +66,7 @@ Expected body: `{"status":"ok"}`.
 
 - `backend/` — Spring Boot API and security tests.
 - `frontend/` — React + Vite UI.
+- `ocr-worker/` — standalone Tesseract OCR worker that makes scans searchable (see `ocr-worker/README.md`).
 - `infra/keycloak/` — realm export for automatic import.
 - `infra/docker-compose/` — local development compose file.
 - `scripts/` — database initialization helpers.
