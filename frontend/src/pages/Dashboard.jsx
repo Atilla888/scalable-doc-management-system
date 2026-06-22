@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
 import { Link } from "react-router-dom";
->>>>>>> 7a096b8adde8bbb5ea2abb75ab164ce3f91f3231
 import { useAuth } from "../context/AuthContext";
 import { getRootFolder } from "../api/folders";
 import useApiResource from "../hooks/useApiResource";

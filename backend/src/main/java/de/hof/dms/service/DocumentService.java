@@ -158,6 +158,53 @@ public class DocumentService {
         documentRepository.save(record);
     }
 
+    /**
+     * Replaces the binary content of an existing document (CMIS setContentStream).
+     * Requires <b>update</b> permission. The previous GridFS blob is removed and
+     * the stored file name, content type, and size are refreshed.
+     */
+    public DocumentMetadataResponse setContent(String id, MultipartFile file, CurrentUser user) {
+        DocumentRecord record = findActiveDocument(id);
+        permissionService.requireDocument(user, record, PermissionService.Action.UPDATE);
+        if (file == null || file.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "content is required");
+        }
+
+        String contentType =
+                file.getContentType() != null && !file.getContentType().isBlank()
+                        ? file.getContentType()
+                        : "application/octet-stream";
+        String fileName =
+                file.getOriginalFilename() != null && !file.getOriginalFilename().isBlank()
+                        ? file.getOriginalFilename()
+                        : record.getFileName();
+
+        ObjectId gridFsId;
+        try {
+            gridFsId =
+                    gridFsTemplate.store(
+                            file.getInputStream(),
+                            fileName,
+                            contentType,
+                            metadataFor(user, record.getTitle()));
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Failed to read uploaded file");
+        }
+
+        // Drop the old blob only after the new one is stored.
+        if (record.getGridFsFileId() != null) {
+            gridFsTemplate.delete(
+                    Query.query(Criteria.where("_id").is(new ObjectId(record.getGridFsFileId()))));
+        }
+
+        record.setGridFsFileId(gridFsId.toHexString());
+        record.setContentType(contentType);
+        record.setFileName(fileName);
+        record.setFileSize(file.getSize());
+        documentRepository.save(record);
+        return DocumentMetadataResponse.from(record);
+    }
+
     public DocumentMetadataResponse updateMetadata(
             String id, MetadataUpdateRequest request, CurrentUser user) {
         DocumentRecord record = findActiveDocument(id);

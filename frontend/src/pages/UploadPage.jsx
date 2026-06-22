@@ -1,17 +1,3 @@
-<<<<<<< HEAD
-const uploadSteps = [
-  { title: "Select file", detail: "Choose a PDF, scan, XML, or JSON document." },
-  { title: "Enter metadata", detail: "Set title, EAP number, folder, and permissions." },
-  { title: "Start upload", detail: "Store the file and queue OCR if required." },
-  { title: "Review status", detail: "Track upload and OCR progress here." },
-];
-
-const recentUploads = [
-  { name: "Permit_2024-031.pdf", status: "Uploaded", progress: 100 },
-  { name: "Inspection_A12.tif", status: "OCR processing", progress: 74 },
-  { name: "Case_Notes.json", status: "Pending permission check", progress: 42 },
-];
-=======
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -24,7 +10,6 @@ import ApiErrorPanel from "../components/ApiErrorPanel";
 import OcrStatusBadge from "../components/OcrStatusBadge";
 
 const DOC_TYPES = ["report", "invoice", "contract", "scan", "letter", "other"];
->>>>>>> 7a096b8adde8bbb5ea2abb75ab164ce3f91f3231
 
 const UploadPage = () => {
   const { user } = useAuth();

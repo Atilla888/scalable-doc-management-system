@@ -50,6 +50,29 @@ All document routes require a Bearer token.
 - `GET /api/documents/{id}/permissions` — requires **read**; the full ACL is only returned to `dms_admin` or users with **managePermissions** (others get their effective permissions only).
 - `PUT /api/documents/{id}/permissions` — replace the document ACL. Requires **managePermissions** (or `dms_admin`).
 
+### CMIS interface (Browser / JSON binding)
+
+A minimal CMIS 1.1 interface is exposed under `/cmis`, using the **Browser (JSON) binding**. We chose the JSON binding (rather than AtomPub or the OpenCMIS server framework) because Apache Chemistry OpenCMIS still targets `javax.servlet` and is incompatible with this Spring Boot 3 / Tomcat 10 (`jakarta.servlet`) stack; the JSON binding maps cleanly onto Spring controllers and reuses the existing JWT auth and `PermissionService` RBAC unchanged.
+
+Conventions: reads are dispatched by the `cmisselector` query parameter (GET); writes by the `cmisaction` form parameter (POST). All `/cmis/**` requests require a Keycloak Bearer token (unauthenticated → `401`). Faults are returned as the Browser binding's JSON body `{"exception": "...", "message": "..."}` with the matching HTTP status — notably `permissionDenied` → `403`, `objectNotFound` → `404`, `invalidArgument` → `400`, `constraint`/`nameConstraintViolation` → `409`. Object types map as `cmis:folder` ↔ `folders` and `cmis:document` ↔ `documents`. Repository identity is configurable via `dms.cmis.repository-id` / `dms.cmis.repository-name`.
+
+Service URLs:
+
+- `GET /cmis/browser` — getRepositories (map keyed by repository id, each value a repository info object with `repositoryId`, `repositoryName`, `cmisVersionSupported`, `rootFolderId`).
+- `GET /cmis/browser/{repoId}?cmisselector=repositoryInfo` — getRepositoryInfo for one repository.
+- `GET /cmis/browser/{repoId}?cmisselector=query&statement=...` — query (also available via `cmisselector=query` on `/root`, or POST `cmisaction=query`). Supports the MVP subset `CONTAINS('keyword')` (full-text, identical RBAC path to `/api/search`) and `WHERE cmis:name = '...'`. Both apply the same per-user permission filter as REST search.
+- `GET /cmis/browser/{repoId}/root?cmisselector=object&objectId=X` — getObject (folder or document; unauthorized → `permissionDenied`). `objectId` omitted ⇒ root folder.
+- `GET /cmis/browser/{repoId}/root?cmisselector=children&objectId=X` — getChildren (only objects the caller may **read**; `maxItems`/`skipCount` paginate).
+- `GET /cmis/browser/{repoId}/root?cmisselector=parents&objectId=X` — getParents (parent folder of an object).
+- `GET /cmis/browser/{repoId}/root?cmisselector=content&objectId=X` — getContentStream (streams the GridFS blob).
+- `POST /cmis/browser/{repoId}/root` with `cmisaction`:
+  - `createFolder` — `objectId` = parent (root if omitted), `cmis:name` via `propertyId[n]`/`propertyValue[n]`. Requires **create** on the parent. Returns the new `cmis:folder`.
+  - `createDocument` — multipart `content` part + `objectId` parent + `cmis:name` (optional `dms:documentType`). Requires **create**. The document is created through the same path as `POST /api/documents`, so it is immediately visible (with identical metadata) via the REST API.
+  - `setContent` — multipart `content` + `objectId`. Replaces the document's binary. Requires **update**.
+  - `delete` — `objectId`. Documents are soft-deleted; folders require **delete** and must be empty and non-root (deleteTree is out of scope) else `constraint`.
+
+A `dms_viewer` (read-only) caller is rejected with `permissionDenied` on every write (`createDocument`, `createFolder`, `setContent`, `delete`), exactly as the REST API rejects the same actions.
+
 ### RBAC model
 
 `PermissionService` resolves every document/folder action in this order:

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Full-text document search with RBAC enforced at query time.
@@ -51,6 +52,39 @@ public class SearchService {
         query.addCriteria(Criteria.where("document_status").is(DocumentService.STATUS_ACTIVE));
         query.addCriteria(Criteria.where("indexing_status").is(INDEXED));
         // Mandatory RBAC predicate, applied in the same query — never post-filtered.
+        Criteria permission = permissionFilter(user);
+        if (permission != null) {
+            query.addCriteria(permission);
+        }
+
+        query.with(Sort.by(Sort.Direction.DESC, "upload_date"))
+                .skip((long) safePage * safeLimit)
+                .limit(safeLimit);
+
+        return mongoTemplate.find(query, DocumentRecord.class).stream()
+                .map(SearchResultEntry::from)
+                .toList();
+    }
+
+    /**
+     * Exact-name lookup for CMIS {@code WHERE cmis:name = '...'} queries. Matches
+     * active documents whose title equals {@code name} (case-insensitive) and
+     * applies the same per-user RBAC predicate as {@link #search}. Unlike
+     * full-text search this does not require the document to be indexed, since a
+     * name lookup is metadata-only.
+     */
+    public List<SearchResultEntry> searchByName(String name, CurrentUser user, int page, int limit) {
+        if (name == null || name.isBlank() || user == null) {
+            return List.of();
+        }
+
+        int safeLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
+        int safePage = Math.max(page, 0);
+
+        Query query = new Query();
+        query.addCriteria(
+                Criteria.where("title").regex("^" + Pattern.quote(name.trim()) + "$", "i"));
+        query.addCriteria(Criteria.where("document_status").is(DocumentService.STATUS_ACTIVE));
         Criteria permission = permissionFilter(user);
         if (permission != null) {
             query.addCriteria(permission);

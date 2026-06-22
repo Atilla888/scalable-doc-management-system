@@ -1,31 +1,3 @@
-<<<<<<< HEAD
-const searchResults = [
-  {
-    title: "Permit_2024-031.pdf",
-    fileNumber: "EAP-12.04.01",
-    type: "PDF",
-    folder: "Case Folder 2024-031",
-    updatedAt: "2026-04-21",
-    snippet: "Permit approval letter for the building case.",
-  },
-  {
-    title: "Inspection_A12.tif",
-    fileNumber: "EAP-12.04.02",
-    type: "Scan",
-    folder: "Case Folder 2024-031",
-    updatedAt: "2026-04-20",
-    snippet: "OCR text extracted from the inspection scan.",
-  },
-  {
-    title: "Appeal_Letter.pdf",
-    fileNumber: "EAP-12.04.07",
-    type: "Scan",
-    folder: "Case Folder 2024-031",
-    updatedAt: "2026-04-17",
-    snippet: "Appeal document linked to the same case folder.",
-  },
-];
-=======
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { searchDocuments } from "../api/search";
@@ -33,7 +5,6 @@ import { ApiError } from "../api/client";
 import OcrStatusBadge from "../components/OcrStatusBadge";
 import ApiErrorPanel from "../components/ApiErrorPanel";
 import LoadingState from "../components/LoadingState";
->>>>>>> 7a096b8adde8bbb5ea2abb75ab164ce3f91f3231
 
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
