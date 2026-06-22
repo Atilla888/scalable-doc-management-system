@@ -21,13 +21,15 @@ public class AuthInfoController {
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> me(@AuthenticationPrincipal Jwt jwt) {
         var realmAccess = jwt.getClaimAsMap("realm_access");
-        return ResponseEntity.ok(Map.of(
-                "sub",               jwt.getSubject(),
-                "preferred_username", jwt.getClaimAsString("preferred_username"),
-                "email",             jwt.getClaimAsString("email"),
-                "name",              jwt.getClaimAsString("name") != null
-                                         ? jwt.getClaimAsString("name") : "",
-                "realm_access",      realmAccess != null ? realmAccess : Map.of()
-        ));
+        var body = new java.util.LinkedHashMap<String, Object>();
+        body.put("sub", jwt.getSubject());
+        body.put("preferred_username", jwt.getClaimAsString("preferred_username"));
+        body.put("email", jwt.getClaimAsString("email"));
+        body.put("name", jwt.getClaimAsString("name") != null ? jwt.getClaimAsString("name") : "");
+        body.put("realm_access", realmAccess != null ? realmAccess : Map.of());
+        if (jwt.hasClaim("department")) {
+            body.put("department", jwt.getClaimAsString("department"));
+        }
+        return ResponseEntity.ok(body);
     }
 }
