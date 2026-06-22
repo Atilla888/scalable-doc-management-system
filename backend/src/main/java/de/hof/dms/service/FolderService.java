@@ -1,7 +1,6 @@
 package de.hof.dms.service;
 
 import de.hof.dms.domain.Folder;
-<<<<<<< HEAD
 import de.hof.dms.domain.FolderAccess;
 import de.hof.dms.domain.FolderAcl;
 import de.hof.dms.dto.BreadcrumbEntry;
@@ -9,10 +8,6 @@ import de.hof.dms.dto.CreateFolderRequest;
 import de.hof.dms.dto.DocumentSummary;
 import de.hof.dms.dto.FolderPage;
 import de.hof.dms.dto.FolderResponse;
-=======
-import de.hof.dms.dto.BreadcrumbEntry;
-import de.hof.dms.dto.DocumentSummary;
->>>>>>> 7a096b8adde8bbb5ea2abb75ab164ce3f91f3231
 import de.hof.dms.dto.FolderSummary;
 import de.hof.dms.dto.FolderViewResponse;
 import de.hof.dms.exception.ApiException;
@@ -22,10 +17,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-<<<<<<< HEAD
 import java.time.Instant;
-=======
->>>>>>> 7a096b8adde8bbb5ea2abb75ab164ce3f91f3231
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,11 +28,8 @@ public class FolderService {
 
     private static final String ROOT_PATH = "/";
     private static final int MAX_BREADCRUMB_DEPTH = 64;
-<<<<<<< HEAD
     private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 100;
-=======
->>>>>>> 7a096b8adde8bbb5ea2abb75ab164ce3f91f3231
 
     private final FolderRepository folderRepository;
     private final DocumentRepository documentRepository;
@@ -75,7 +64,6 @@ public class FolderService {
         return buildView(folder, user);
     }
 
-<<<<<<< HEAD
     /**
      * Lists the child folders of {@code parentId} (or of the root folder when
      * {@code parentId} is blank), restricted to folders the user may READ, with
@@ -183,8 +171,6 @@ public class FolderService {
         return acl;
     }
 
-=======
->>>>>>> 7a096b8adde8bbb5ea2abb75ab164ce3f91f3231
     private FolderViewResponse buildView(Folder folder, CurrentUser user) {
         permissionService.requireFolder(user, folder, PermissionService.Action.READ);
 

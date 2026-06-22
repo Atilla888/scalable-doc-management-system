@@ -32,11 +32,8 @@ Any other path under `/api/**` requires authentication. Paths under `/api/admin/
 
 All routes require a Bearer token.
 
-<<<<<<< HEAD
 - `GET /api/folders` — paginated list of child folders, filtered to those the caller may **read**. Query params: `parentId` (optional — children of the root folder when omitted), `page` (default `0`), `size` (default `20`, max `100`). Response: `{ "content": [ { "id", "name", "path" } ], "page", "size", "totalElements", "totalPages" }`. 404 if `parentId` does not reference an existing folder.
 - `POST /api/folders` — JSON body `{ "name" (required), "parentId" (optional — root when omitted), "inheritFromParent" (optional, default `true`) }`. Requires **create** permission on the parent folder. Generates `_id`, the materialized `path` (parent path + name + `/`, e.g. `/Finance/` + `2026` → `/Finance/2026/`), and `created_at`; seeds the ACL from the caller's identity (`owner`, `owner_department`). Returns `201 Created` with the new folder document. 404 if the parent does not exist; 409 if a sibling with the same name already exists (this also prevents creating a second root).
-=======
->>>>>>> 7a096b8adde8bbb5ea2abb75ab164ce3f91f3231
 - `GET /api/folders/root` — root folder view: folder metadata, breadcrumb, subfolders, and active documents.
 - `GET /api/folders/{id}` — same shape for any folder; 404 if the folder does not exist.
 - `GET /api/search?q=...` — searches active documents by title, description, EAP number, and OCR text (case-insensitive), returning id, title, EAP number, type, OCR status, and a snippet.
