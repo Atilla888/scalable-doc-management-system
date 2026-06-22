@@ -1,5 +1,20 @@
 services:
 
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ../../scripts/mongo-init.js:/docker-entrypoint-initdb.d/01-mongo-init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.2
     command: start-dev --import-realm --health-enabled=true
@@ -8,8 +23,12 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HTTP_PORT: 8080
       KC_MANAGEMENT_PORT: 9000
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: false
+      KC_HTTP_ENABLED: true
     volumes:
-      - ./keycloak/dms-realm.json:/opt/keycloak/data/import/dms-realm.json:ro
+      - ../keycloak/dms-realm.json:/opt/keycloak/data/import/dms-realm.json:ro
     ports:
       - "8080:8080"
       - "9000:9000"
@@ -32,6 +51,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:8081
       - VITE_KEYCLOAK_URL=http://localhost:8080
       - VITE_KEYCLOAK_REALM=dms
       - VITE_KEYCLOAK_CLIENT_ID=dms-frontend
@@ -47,9 +67,27 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/dms
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://localhost:8080/realms/dms
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/dms/protocol/openid-connect/certs
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/dms
       - SERVER_PORT=8081
     depends_on:
       keycloak:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
     restart: unless-stopped
+
+  ocr-worker:
+    build:
+      context: ../../ocr-worker
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/dms
+      - OCR_POLL_INTERVAL_MS=5000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:

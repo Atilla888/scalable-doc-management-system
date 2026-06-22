@@ -2,12 +2,11 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Layout from "./layouts/Layout";
-import DocumentsPage from "./pages/DocumentsPage";
+import FolderView from "./pages/FolderView";
+import DocumentDetail from "./pages/DocumentDetail";
 import SearchPage from "./pages/SearchPage";
 import UploadPage from "./pages/UploadPage";
-import OCRStatusPage from "./pages/OCRStatusPage";
 import AdminPage from "./pages/AdminPage";
-import ApiCmisPage from "./pages/ApiCmisPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function Unauthorized() {
@@ -19,7 +18,7 @@ function Unauthorized() {
         <p className="mt-3 text-sm text-text-secondary">
           You do not have the required role to view this page.
         </p>
-        <a href="/dashboard" className="mt-6 inline-block text-sm text-primary underline">
+        <a href="/" className="mt-6 inline-block text-sm text-primary underline">
           Back to Dashboard
         </a>
       </div>
@@ -37,20 +36,21 @@ export default function App() {
       {/* Protected routes — all authenticated users */}
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="documents" element={<DocumentsPage />} />
+          <Route index element={<Dashboard />} />
+          <Route path="folders/:id" element={<FolderView />} />
+          <Route path="documents/:id" element={<DocumentDetail />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="upload" element={<UploadPage />} />
-          <Route path="ocr-status" element={<OCRStatusPage />} />
-          <Route path="api-cmis" element={<ApiCmisPage />} />
 
           {/* Admin-only route */}
-          <Route element={<ProtectedRoute requiredRole="DMS_ADMIN" />}>
+          <Route element={<ProtectedRoute requiredRole="dms_admin" />}>
             <Route path="admin" element={<AdminPage />} />
           </Route>
         </Route>
       </Route>
+
+      {/* Unknown paths fall back to the dashboard */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

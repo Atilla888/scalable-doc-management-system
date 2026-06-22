@@ -13,7 +13,7 @@ const Login = () => {
   }
 
   if (authenticated) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/" replace />
   }
 
   return (
@@ -70,10 +70,11 @@ const Login = () => {
               <div className="rounded-2xl border border-border bg-background p-4">
                 <p className="text-sm font-semibold text-text">Demo users</p>
                 <ul className="mt-2 space-y-1 text-xs text-text-secondary">
-                  <li>admin / admin123</li>
-                  <li>manager / manager123</li>
-                  <li>editor / editor123</li>
-                  <li>viewer / viewer123</li>
+                  <li>admin@dms.local</li>
+                  <li>manager@dms.local</li>
+                  <li>contributor@dms.local</li>
+                  <li>viewer@dms.local</li>
+                  <li className="pt-1 text-text-secondary/80">Password: changeme_dev (dev only)</li>
                 </ul>
               </div>
               <div className="rounded-2xl border border-border bg-background p-4">
