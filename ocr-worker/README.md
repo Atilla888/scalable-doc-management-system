@@ -1,9 +1,11 @@
 # OCR worker
 
-A standalone background service that makes scanned documents full-text searchable.
-It polls MongoDB for documents with `ocr_status = "pending"`, extracts their text
-with [Tesseract](https://github.com/tesseract-ocr/tesseract), stores it in
-`documents.ocr_text`, and marks the document `completed` / `indexed`.
+A standalone background service that makes documents full-text searchable. It polls
+MongoDB for documents with `ocr_status = "pending"` and extracts their text: for
+born-digital PDFs it reads the embedded text layer directly, and it falls back to
+[Tesseract](https://github.com/tesseract-ocr/tesseract) OCR only for scans. The text
+is stored in `documents.ocr_text`, the method used in `documents.extraction_method`,
+and the document is marked `completed` / `indexed`.
 
 There is no message queue — polling is sufficient for the MVP.
 
@@ -15,19 +17,20 @@ Each poll cycle the worker:
    (filter `ocr_status = "pending"`, sorted by `upload_date` ascending), flipping it
    to `processing`. The atomic update guarantees two workers never grab the same job.
 2. **Fetches** the binary from GridFS using `gridfs_file_id`.
-3. **OCRs** it:
+3. **Extracts text**, choosing the cheapest method:
+   - Born-digital PDF (has a text layer) → text read directly with `pdfminer.six`, no OCR.
+   - Scanned PDF (no text layer) → rasterized page by page with Poppler (`pdftoppm` via
+     `pdf2image`), then Tesseract per page.
    - PNG / JPEG → Tesseract directly.
-   - Scanned PDF → rasterized page by page with Poppler (`pdftoppm` via `pdf2image`),
-     then Tesseract per page.
-4. **Writes** the result: `ocr_text`, `ocr_status = "completed"`,
-   `indexing_status = "indexed"`.
+4. **Writes** the result: `ocr_text`, `extraction_method` (`embedded` or `ocr`),
+   `ocr_status = "completed"`, `indexing_status = "indexed"`.
 
 On any failure the document is set to `ocr_status = "failed"` with an `ocr_error`
 message; the worker logs it and continues, so one bad scan never blocks the queue.
 If MongoDB is temporarily unreachable the error is caught and retried on the next
 poll cycle — the process does not crash.
 
-Supported MVP inputs: scanned PDF, PNG, JPEG. XML/JSON and other non-image types are
+Supported MVP inputs: PDF (born-digital or scanned), PNG, JPEG. XML/JSON and other non-image types are
 out of scope (the backend marks those `ocr_status = "not_required"`, so they are
 never picked up).
 
@@ -70,6 +73,6 @@ pytest
 
 `tests/test_worker.py` covers the claim→complete happy path, the failure path
 (`ocr_status = "failed"` with `ocr_error`), and that one failure does not block the
-next job. `tests/test_ocr.py` covers input classification and the unsupported-type
-error. End-to-end OCR (real Tesseract on a known scan, plus the authorized/
+next job. `tests/test_ocr.py` covers input classification, the embedded-vs-OCR
+routing, and the unsupported-type error. End-to-end OCR (real Tesseract on a known scan, plus the authorized/
 unauthorized `/api/search` checks) is exercised against the running Compose stack.
