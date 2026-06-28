@@ -7,6 +7,7 @@ Covered:
 """
 
 from config import Config
+from ocr import METHOD_EMBEDDED, METHOD_OCR, ExtractionResult
 from worker import COMPLETED, FAILED, INDEXED, PENDING, PROCESSING, Worker
 
 
@@ -70,7 +71,7 @@ def test_one_failure_does_not_block_the_next_job():
     worker = _worker([bad, good])
 
     # Stub OCR so the "good" doc completes without Tesseract.
-    worker._ocr_document = lambda d: "hello world" if d["_id"] == good["_id"] else (_ for _ in ()).throw(
+    worker._ocr_document = lambda d: ExtractionResult("hello world", METHOD_OCR) if d["_id"] == good["_id"] else (_ for _ in ()).throw(
         Exception("boom")
     )
 
@@ -82,6 +83,7 @@ def test_one_failure_does_not_block_the_next_job():
     assert good["ocr_status"] == COMPLETED
     assert good["indexing_status"] == INDEXED
     assert good["ocr_text"] == "hello world"
+    assert good["extraction_method"] == METHOD_OCR
 
 
 def test_claim_marks_processing_before_ocr():
@@ -92,10 +94,11 @@ def test_claim_marks_processing_before_ocr():
     def capture(d):
         # status seen by the OCR stage must already be 'processing'
         seen["status"] = d["ocr_status"]
-        return "text"
+        return ExtractionResult("text", METHOD_EMBEDDED)
 
     worker._ocr_document = capture
     worker.process_one()
 
     assert seen["status"] == PROCESSING
     assert doc["ocr_status"] == COMPLETED
+    assert doc["extraction_method"] == METHOD_EMBEDDED

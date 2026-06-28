@@ -116,12 +116,13 @@ class Worker:
 
         doc_id = doc.get("_id")
         try:
-            text = self._ocr_document(doc)
+            result = self._ocr_document(doc)
             self.documents.update_one(
                 {"_id": doc_id},
                 {
                     "$set": {
-                        "ocr_text": text,
+                        "ocr_text": result.text,
+                        "extraction_method": result.method,
                         "ocr_status": COMPLETED,
                         "indexing_status": INDEXED,
                         "ocr_completed_at": _now(),
@@ -129,7 +130,12 @@ class Worker:
                     "$unset": {"ocr_error": ""},
                 },
             )
-            log.info("OCR completed for %s (%d chars extracted)", doc_id, len(text))
+            log.info(
+                "Extraction completed for %s (method=%s, %d chars extracted)",
+                doc_id,
+                result.method,
+                len(result.text),
+            )
         except PyMongoError:
             # Writing the result failed; let the outer loop handle the outage.
             # The document stays in 'processing' and would need requeueing, but we
@@ -155,7 +161,7 @@ class Worker:
             doc.get("content_type"),
             doc.get("file_name"),
             self.config.languages,
-        ).text
+        )
 
     def _mark_failed(self, doc_id, error: Exception) -> None:
         log.warning("OCR failed for %s: %s", doc_id, error)
