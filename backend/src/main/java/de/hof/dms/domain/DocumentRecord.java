@@ -56,6 +56,9 @@ public class DocumentRecord {
     @Field("ocr_text")
     private String ocrText;
 
+    @Field("extraction_method")
+    private String extractionMethod;
+
     @Field("indexing_status")
     private String indexingStatus;
 
@@ -188,6 +191,14 @@ public class DocumentRecord {
 
     public void setOcrText(String ocrText) {
         this.ocrText = ocrText;
+    }
+
+    public String getExtractionMethod() {
+        return extractionMethod;
+    }
+
+    public void setExtractionMethod(String extractionMethod) {
+        this.extractionMethod = extractionMethod;
     }
 
     public String getIndexingStatus() {

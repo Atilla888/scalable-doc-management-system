@@ -18,6 +18,7 @@ public record DocumentMetadataResponse(
         String eapNumber,
         String parentId,
         String ocrStatus,
+        String extractionMethod,
         String indexingStatus,
         String documentStatus) {
 
@@ -36,6 +37,7 @@ public record DocumentMetadataResponse(
                 record.getEapNumber(),
                 record.getFolderId(),
                 record.getOcrStatus(),
+                record.getExtractionMethod(),
                 record.getIndexingStatus(),
                 record.getDocumentStatus());
     }
