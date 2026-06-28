@@ -155,7 +155,7 @@ class Worker:
             doc.get("content_type"),
             doc.get("file_name"),
             self.config.languages,
-        )
+        ).text
 
     def _mark_failed(self, doc_id, error: Exception) -> None:
         log.warning("OCR failed for %s: %s", doc_id, error)
