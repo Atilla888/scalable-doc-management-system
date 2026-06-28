@@ -18,7 +18,7 @@ retried on the next poll cycle.
 import logging
 import signal
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import gridfs
 from gridfs.errors import NoFile
@@ -86,7 +86,9 @@ class Worker:
         )
         while self._running:
             try:
-                # Drain all currently-pending jobs, then sleep until the next poll.
+                # Recover jobs abandoned by a crashed/outage worker, then drain the
+                # pending queue and sleep until the next poll.
+                self.requeue_stale()
                 while self._running and self.process_one():
                     pass
             except PyMongoError as exc:
@@ -107,6 +109,27 @@ class Worker:
             sort=[("upload_date", ASCENDING)],
             return_document=ReturnDocument.AFTER,
         )
+
+    def requeue_stale(self) -> int:
+        """Requeue documents stuck in 'processing' past the timeout (worker outage).
+
+        A worker that dies after claiming a job leaves it in 'processing' forever,
+        since claim_next only looks at 'pending'. Once ocr_started_at is older than
+        the configured timeout the job is considered abandoned and flipped back to
+        'pending' so another cycle can pick it up; retry_count records the dead attempt.
+        """
+        timeout = self.config.processing_timeout_seconds
+        if not timeout:
+            return 0
+        cutoff = _now() - timedelta(seconds=timeout)
+        result = self.documents.update_many(
+            {"ocr_status": PROCESSING, "ocr_started_at": {"$lt": cutoff}},
+            {"$set": {"ocr_status": PENDING}, "$inc": {"retry_count": 1}},
+        )
+        count = getattr(result, "modified_count", 0)
+        if count:
+            log.warning("Requeued %d OCR job(s) stuck in processing (worker outage)", count)
+        return count
 
     def process_one(self) -> bool:
         """Process a single pending document. Returns False when the queue is empty."""

@@ -13,6 +13,7 @@ class Config:
     languages: str
     max_file_mb: int
     max_pages: int
+    processing_timeout_ms: int
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -25,6 +26,9 @@ class Config:
             languages=os.getenv("OCR_LANGUAGES", "eng"),
             max_file_mb=_positive_int("OCR_MAX_FILE_MB", 50),
             max_pages=_positive_int("OCR_MAX_PAGES", 200),
+            # A job claimed by a worker that then dies stays in "processing"; after
+            # this long it is treated as abandoned and requeued.
+            processing_timeout_ms=_positive_int("OCR_PROCESSING_TIMEOUT_MS", 600000),
         )
 
     @property
@@ -34,6 +38,10 @@ class Config:
     @property
     def max_file_bytes(self) -> int:
         return self.max_file_mb * 1024 * 1024
+
+    @property
+    def processing_timeout_seconds(self) -> float:
+        return self.processing_timeout_ms / 1000.0
 
 
 def _positive_int(name: str, default: int) -> int:

@@ -6,6 +6,9 @@ Covered:
 - failure path -> sets 'failed' with an ocr_error message, queue stays drainable
 """
 
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+
 import pytest
 
 from config import Config
@@ -29,16 +32,39 @@ class FakeDocuments:
     def update_one(self, filt, update):
         for doc in self.docs:
             if doc["_id"] == filt["_id"]:
-                doc.update(update.get("$set", {}))
-                for key in update.get("$unset", {}):
-                    doc.pop(key, None)
-                for key, amount in update.get("$inc", {}).items():
-                    doc[key] = doc.get(key, 0) + amount
+                self._apply(doc, update)
         return None
+
+    def update_many(self, filt, update):
+        modified = 0
+        for doc in self.docs:
+            if self._matches(doc, filt):
+                self._apply(doc, update)
+                modified += 1
+        return SimpleNamespace(modified_count=modified)
+
+    @staticmethod
+    def _matches(doc, filt):
+        for key, cond in filt.items():
+            value = doc.get(key)
+            if isinstance(cond, dict):
+                if "$lt" in cond and not (value is not None and value < cond["$lt"]):
+                    return False
+            elif value != cond:
+                return False
+        return True
+
+    @staticmethod
+    def _apply(doc, update):
+        doc.update(update.get("$set", {}))
+        for key in update.get("$unset", {}):
+            doc.pop(key, None)
+        for key, amount in update.get("$inc", {}).items():
+            doc[key] = doc.get(key, 0) + amount
 
 
 def _worker(docs, fs=None):
-    worker = Worker(Config("mongodb://localhost:27017/dms", 5000, "eng", 50, 200))
+    worker = Worker(Config("mongodb://localhost:27017/dms", 5000, "eng", 50, 200, 600000))
     worker.documents = FakeDocuments(docs)
     worker.fs = fs
     return worker
@@ -111,7 +137,7 @@ def test_claim_marks_processing_before_ocr():
 
 def test_oversized_file_is_rejected_by_guardrail():
     worker = _worker([])
-    worker.config = Config("mongodb://localhost:27017/dms", 5000, "eng", 1, 200)
+    worker.config = Config("mongodb://localhost:27017/dms", 5000, "eng", 1, 200, 600000)
     oversized = b"x" * (worker.config.max_file_bytes + 1)
 
     with pytest.raises(OcrError):
@@ -122,7 +148,7 @@ def test_too_many_pages_is_rejected_by_guardrail(monkeypatch):
     import worker as worker_module
 
     worker = _worker([])
-    worker.config = Config("mongodb://localhost:27017/dms", 5000, "eng", 50, 10)
+    worker.config = Config("mongodb://localhost:27017/dms", 5000, "eng", 50, 10, 600000)
     monkeypatch.setattr(worker_module, "count_pdf_pages", lambda data: 11)
 
     with pytest.raises(OcrError):
@@ -132,3 +158,17 @@ def test_too_many_pages_is_rejected_by_guardrail(monkeypatch):
 def test_guardrails_allow_normal_file():
     worker = _worker([])
     worker._enforce_guardrails({"content_type": "image/png", "file_name": "scan.png"}, b"small")
+
+
+def test_requeue_stale_processing_jobs():
+    now = datetime.now(timezone.utc)
+    stale = {"_id": "1", "ocr_status": PROCESSING, "ocr_started_at": now - timedelta(hours=1)}
+    fresh = {"_id": "2", "ocr_status": PROCESSING, "ocr_started_at": now}
+    worker = _worker([stale, fresh])
+
+    requeued = worker.requeue_stale()
+
+    assert requeued == 1
+    assert stale["ocr_status"] == PENDING
+    assert stale["retry_count"] == 1
+    assert fresh["ocr_status"] == PROCESSING

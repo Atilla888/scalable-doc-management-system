@@ -30,17 +30,24 @@ message; the worker logs it and continues, so one bad scan never blocks the queu
 If MongoDB is temporarily unreachable the error is caught and retried on the next
 poll cycle — the process does not crash.
 
+If a worker dies after claiming a job, that document is left in `processing`. At the
+start of each cycle the worker requeues any document stuck in `processing` longer
+than `OCR_PROCESSING_TIMEOUT_MS` back to `pending`, so an outage never strands a job.
+
 Supported MVP inputs: PDF (born-digital or scanned), PNG, JPEG. XML/JSON and other non-image types are
 out of scope (the backend marks those `ocr_status = "not_required"`, so they are
 never picked up).
 
 ## Configuration
 
-| Env var                | Default                          | Purpose                                   |
-| ---------------------- | -------------------------------- | ----------------------------------------- |
-| `MONGODB_URI`          | `mongodb://mongodb:27017/dms`    | Connection string (DB name from the path) |
-| `OCR_POLL_INTERVAL_MS` | `5000`                           | Delay between poll cycles, milliseconds   |
-| `OCR_LANGUAGES`        | `eng`                            | Tesseract language(s), e.g. `eng+deu`     |
+| Env var                     | Default                       | Purpose                                            |
+| --------------------------- | ----------------------------- | -------------------------------------------------- |
+| `MONGODB_URI`               | `mongodb://mongodb:27017/dms` | Connection string (DB name from the path)          |
+| `OCR_POLL_INTERVAL_MS`      | `5000`                        | Delay between poll cycles, milliseconds            |
+| `OCR_LANGUAGES`             | `eng`                         | Tesseract language(s), e.g. `eng+deu`              |
+| `OCR_MAX_FILE_MB`           | `50`                          | Reject files larger than this before extraction    |
+| `OCR_MAX_PAGES`             | `200`                         | Reject PDFs with more pages than this              |
+| `OCR_PROCESSING_TIMEOUT_MS` | `600000`                      | Requeue jobs stuck in `processing` past this delay |
 
 ## Run with Docker Compose
 
