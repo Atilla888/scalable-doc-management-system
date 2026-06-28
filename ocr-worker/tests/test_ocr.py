@@ -84,3 +84,7 @@ def test_image_always_uses_ocr(monkeypatch):
 
     assert result.method == METHOD_OCR
     assert result.text == "text from photo"
+
+
+def test_count_pdf_pages_returns_zero_on_non_pdf():
+    assert ocr.count_pdf_pages(b"not a pdf") == 0

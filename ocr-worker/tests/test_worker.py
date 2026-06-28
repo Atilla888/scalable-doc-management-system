@@ -6,8 +6,10 @@ Covered:
 - failure path -> sets 'failed' with an ocr_error message, queue stays drainable
 """
 
+import pytest
+
 from config import Config
-from ocr import METHOD_EMBEDDED, METHOD_OCR, ExtractionResult
+from ocr import METHOD_EMBEDDED, METHOD_OCR, ExtractionResult, OcrError
 from worker import COMPLETED, FAILED, INDEXED, PENDING, PROCESSING, Worker
 
 
@@ -30,11 +32,13 @@ class FakeDocuments:
                 doc.update(update.get("$set", {}))
                 for key in update.get("$unset", {}):
                     doc.pop(key, None)
+                for key, amount in update.get("$inc", {}).items():
+                    doc[key] = doc.get(key, 0) + amount
         return None
 
 
 def _worker(docs, fs=None):
-    worker = Worker(Config("mongodb://localhost:27017/dms", 5000, "eng"))
+    worker = Worker(Config("mongodb://localhost:27017/dms", 5000, "eng", 50, 200))
     worker.documents = FakeDocuments(docs)
     worker.fs = fs
     return worker
@@ -56,6 +60,7 @@ def test_failure_path_sets_failed_with_error():
     assert doc["ocr_status"] == FAILED
     assert doc["indexing_status"] == FAILED
     assert "ocr_error" in doc and doc["ocr_error"]
+    assert doc["retry_count"] == 1
 
 
 def test_one_failure_does_not_block_the_next_job():
@@ -102,3 +107,28 @@ def test_claim_marks_processing_before_ocr():
     assert seen["status"] == PROCESSING
     assert doc["ocr_status"] == COMPLETED
     assert doc["extraction_method"] == METHOD_EMBEDDED
+
+
+def test_oversized_file_is_rejected_by_guardrail():
+    worker = _worker([])
+    worker.config = Config("mongodb://localhost:27017/dms", 5000, "eng", 1, 200)
+    oversized = b"x" * (worker.config.max_file_bytes + 1)
+
+    with pytest.raises(OcrError):
+        worker._enforce_guardrails({"content_type": "application/pdf", "file_name": "big.pdf"}, oversized)
+
+
+def test_too_many_pages_is_rejected_by_guardrail(monkeypatch):
+    import worker as worker_module
+
+    worker = _worker([])
+    worker.config = Config("mongodb://localhost:27017/dms", 5000, "eng", 50, 10)
+    monkeypatch.setattr(worker_module, "count_pdf_pages", lambda data: 11)
+
+    with pytest.raises(OcrError):
+        worker._enforce_guardrails({"content_type": "application/pdf", "file_name": "long.pdf"}, b"%PDF")
+
+
+def test_guardrails_allow_normal_file():
+    worker = _worker([])
+    worker._enforce_guardrails({"content_type": "image/png", "file_name": "scan.png"}, b"small")

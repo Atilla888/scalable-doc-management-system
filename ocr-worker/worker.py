@@ -28,7 +28,7 @@ from pymongo import ASCENDING, MongoClient, ReturnDocument
 from pymongo.errors import PyMongoError
 
 from config import Config
-from ocr import OcrError, extract_text
+from ocr import OcrError, classify, count_pdf_pages, extract_text
 
 log = logging.getLogger("ocr-worker")
 
@@ -156,12 +156,26 @@ class Worker:
         except NoFile as exc:
             raise OcrError(f"GridFS file {file_id} not found") from exc
         data = grid_out.read()
+        self._enforce_guardrails(doc, data)
         return extract_text(
             data,
             doc.get("content_type"),
             doc.get("file_name"),
             self.config.languages,
         )
+
+    def _enforce_guardrails(self, doc, data: bytes) -> None:
+        """Reject oversized files before spending time on extraction/OCR."""
+        max_bytes = self.config.max_file_bytes
+        if max_bytes and len(data) > max_bytes:
+            raise OcrError(
+                f"File exceeds size limit ({len(data)} bytes > {max_bytes} bytes)"
+            )
+        max_pages = self.config.max_pages
+        if max_pages and classify(doc.get("content_type"), doc.get("file_name")) == "pdf":
+            pages = count_pdf_pages(data)
+            if pages > max_pages:
+                raise OcrError(f"PDF exceeds page limit ({pages} pages > {max_pages})")
 
     def _mark_failed(self, doc_id, error: Exception) -> None:
         log.warning("OCR failed for %s: %s", doc_id, error)
@@ -174,7 +188,8 @@ class Worker:
                         "indexing_status": INDEXING_FAILED,
                         "ocr_error": str(error),
                         "ocr_completed_at": _now(),
-                    }
+                    },
+                    "$inc": {"retry_count": 1},
                 },
             )
         except PyMongoError:

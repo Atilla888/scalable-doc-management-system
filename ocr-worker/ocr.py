@@ -69,6 +69,16 @@ def _extract_pdf(data: bytes, languages: str) -> ExtractionResult:
     return ExtractionResult(_ocr_pdf(data, languages), METHOD_OCR)
 
 
+def count_pdf_pages(data: bytes) -> int:
+    """Return the PDF's page count, or 0 if it cannot be determined."""
+    from pdfminer.pdfpage import PDFPage
+
+    try:
+        return sum(1 for _ in PDFPage.get_pages(io.BytesIO(data)))
+    except Exception:
+        return 0
+
+
 def _pdf_text_layer(data: bytes) -> str:
     """Return the PDF's embedded text layer, or '' if it has none / can't be read.
 

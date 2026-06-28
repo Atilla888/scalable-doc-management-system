@@ -11,6 +11,8 @@ class Config:
     mongodb_uri: str
     poll_interval_ms: int
     languages: str
+    max_file_mb: int
+    max_pages: int
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -21,11 +23,17 @@ class Config:
             # Tesseract language packs; "eng" is the default install. Tuning beyond
             # this is out of scope for the MVP.
             languages=os.getenv("OCR_LANGUAGES", "eng"),
+            max_file_mb=_positive_int("OCR_MAX_FILE_MB", 50),
+            max_pages=_positive_int("OCR_MAX_PAGES", 200),
         )
 
     @property
     def poll_interval_seconds(self) -> float:
         return self.poll_interval_ms / 1000.0
+
+    @property
+    def max_file_bytes(self) -> int:
+        return self.max_file_mb * 1024 * 1024
 
 
 def _positive_int(name: str, default: int) -> int:
