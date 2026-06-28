@@ -7,6 +7,7 @@ import DocumentDetail from "./pages/DocumentDetail";
 import SearchPage from "./pages/SearchPage";
 import UploadPage from "./pages/UploadPage";
 import AdminPage from "./pages/AdminPage";
+import OCRStatusPage from "./pages/OCRStatusPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function Unauthorized() {
@@ -45,6 +46,7 @@ export default function App() {
           {/* Admin-only route */}
           <Route element={<ProtectedRoute requiredRole="dms_admin" />}>
             <Route path="admin" element={<AdminPage />} />
+            <Route path="admin/ocr" element={<OCRStatusPage />} />
           </Route>
         </Route>
       </Route>

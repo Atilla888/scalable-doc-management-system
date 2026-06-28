@@ -12,7 +12,12 @@ const Sidebar = () => {
 
   const navItems = [
     ...baseNavItems,
-    ...(hasRole("dms_admin") ? [{ label: "Admin", to: "/admin" }] : []),
+    ...(hasRole("dms_admin")
+      ? [
+          { label: "Admin", to: "/admin" },
+          { label: "OCR Queue", to: "/admin/ocr" },
+        ]
+      : []),
   ];
 
   return (
