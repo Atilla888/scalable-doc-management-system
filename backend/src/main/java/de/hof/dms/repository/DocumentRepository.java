@@ -12,4 +12,8 @@ public interface DocumentRepository extends MongoRepository<DocumentRecord, Stri
 
     List<DocumentRecord> findByFolderIdAndDocumentStatusOrderByUploadDateDesc(
             String folderId, String documentStatus);
+
+    List<DocumentRecord> findByOcrStatusInOrderByUploadDateDesc(List<String> ocrStatuses);
+
+    List<DocumentRecord> findByOcrStatusOrderByUploadDateDesc(String ocrStatus);
 }

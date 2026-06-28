@@ -59,6 +59,12 @@ public class DocumentRecord {
     @Field("extraction_method")
     private String extractionMethod;
 
+    @Field("ocr_error")
+    private String ocrError;
+
+    @Field("retry_count")
+    private int retryCount;
+
     @Field("indexing_status")
     private String indexingStatus;
 
@@ -199,6 +205,22 @@ public class DocumentRecord {
 
     public void setExtractionMethod(String extractionMethod) {
         this.extractionMethod = extractionMethod;
+    }
+
+    public String getOcrError() {
+        return ocrError;
+    }
+
+    public void setOcrError(String ocrError) {
+        this.ocrError = ocrError;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(int retryCount) {
+        this.retryCount = retryCount;
     }
 
     public String getIndexingStatus() {
