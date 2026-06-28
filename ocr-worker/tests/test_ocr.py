@@ -5,6 +5,8 @@ raises before any heavy import, and the routing tests stub the per-method helper
 Real extraction is exercised by the Compose integration test in the README.
 """
 
+import os
+
 import pytest
 
 import ocr
@@ -15,6 +17,13 @@ from ocr import (
     classify,
     extract_text,
 )
+
+SCANNED_SAMPLE = os.path.join(os.path.dirname(__file__), "fixtures", "scanned_sample.pdf")
+
+
+def _scanned_sample_bytes():
+    with open(SCANNED_SAMPLE, "rb") as handle:
+        return handle.read()
 
 
 def test_classify_pdf_by_content_type():
@@ -88,3 +97,18 @@ def test_image_always_uses_ocr(monkeypatch):
 
 def test_count_pdf_pages_returns_zero_on_non_pdf():
     assert ocr.count_pdf_pages(b"not a pdf") == 0
+
+
+def test_scanned_sample_has_no_text_layer():
+    data = _scanned_sample_bytes()
+    assert ocr.count_pdf_pages(data) >= 1
+    assert len(ocr._pdf_text_layer(data)) < ocr.MIN_TEXT_LAYER_CHARS
+
+
+def test_scanned_sample_falls_back_to_ocr(monkeypatch):
+    monkeypatch.setattr(ocr, "_ocr_pdf", lambda data, lang: "ocr output from scan")
+
+    result = extract_text(_scanned_sample_bytes(), "application/pdf", "scanned_sample.pdf")
+
+    assert result.method == METHOD_OCR
+    assert result.text == "ocr output from scan"
