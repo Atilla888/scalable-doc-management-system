@@ -10,6 +10,7 @@ From the repository root:
 
 ```bash
 cd infra/docker-compose
+cp .env.example .env       # first time only
 docker compose down -v
 docker compose up --build
 ```
