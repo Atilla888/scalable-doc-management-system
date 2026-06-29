@@ -53,33 +53,6 @@
           }
         }
       ]
-    },
-    {
-      "clientId": "dms-api",
-      "name": "DMS API",
-      "enabled": true,
-      "publicClient": false,
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": false,
-      "secret": "dms-api-secret-change-in-prod",
-      "protocol": "openid-connect",
-      "protocolMappers": [
-        {
-          "name": "department",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
-          "config": {
-            "user.attribute": "department",
-            "claim.name": "department",
-            "jsonType.label": "String",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "userinfo.token.claim": "true"
-          }
-        }
-      ]
     }
   ],
   "users": [
