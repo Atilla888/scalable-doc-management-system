@@ -15,7 +15,7 @@ docker compose down -v
 docker compose up --build
 ```
 
-After containers are healthy, use the frontend at http://localhost:5173, the API at http://localhost:8081, Keycloak at http://localhost:8080, and MongoDB on port 27017. The init script `scripts/mongo-init.js` runs automatically on first boot (empty volume) and creates collections, indexes, and the root folder `/`.
+The copied `.env` is local-only and ignored by Git. Replace its example secrets before sharing the environment with anyone. After containers are healthy, use the frontend at http://localhost:5173, the API at http://localhost:8081, Keycloak at http://localhost:8080, and MongoDB on port 27017. The init script `scripts/mongo-init.js` runs automatically on first boot (empty volume) and creates collections, indexes, and the root folder `/`.
 
 The frontend reads all URLs from `VITE_*` environment variables (`VITE_API_BASE_URL`, `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT_ID`) — see `frontend/.env.example`. Compose sets these for you; for standalone `npm run dev`, copy `.env.example` to `.env.local`.
 
@@ -28,6 +28,7 @@ After signing in through Keycloak, the app exposes the core document workflow:
 - `/documents/:id` — Document detail: metadata, OCR status (auto-refreshes while pending or processing), and a download button. A 403 from the backend shows a clear access-denied message instead of content.
 - `/upload` — Upload form: file picker plus title, document type, parent folder, and department; submits to `POST /api/documents` and shows the resulting OCR status.
 - `/search` — Full-text search over titles, EAP numbers, and OCR text; results link to document detail.
+- `/admin` — Admin-only live view of Keycloak users/roles/departments, backend permission scopes, service health, and repository counts.
 
 Every API call attaches the Keycloak Bearer token. The UI never hides content with CSS — it renders exactly what the backend returns and relies on 401/403 responses.
 
@@ -75,3 +76,7 @@ Expected body: `{"status":"ok"}`.
 To verify MongoDB after a fresh start: `docker compose exec mongodb mongosh dms --eval "db.folders.getIndexes()"`, then `db.folders.findOne({ path: '/' })`.
 
 Backend-specific build and test instructions are in `backend/README.md`.
+
+Development and production deliberately use different configuration. See
+[`docs/production-configuration.md`](docs/production-configuration.md) before deploying outside a
+developer machine.

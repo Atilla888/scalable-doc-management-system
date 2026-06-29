@@ -1,6 +1,6 @@
 {
   "realm": "dms",
-  "displayName": "DMS Realm",
+  "displayName": "DMS Production Realm",
   "enabled": true,
   "registrationAllowed": false,
   "resetPasswordAllowed": true,

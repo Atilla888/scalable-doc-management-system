@@ -63,6 +63,7 @@ services:
       - VITE_KEYCLOAK_URL=http://localhost:8080
       - VITE_KEYCLOAK_REALM=dms
       - VITE_KEYCLOAK_CLIENT_ID=dms-frontend
+      - VITE_SHOW_DEMO_USERS=true
     depends_on:
       keycloak:
         condition: service_healthy

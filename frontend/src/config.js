@@ -7,3 +7,4 @@ export const API_BASE_URL =
 export const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || "http://localhost:8080";
 export const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || "dms";
 export const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || "dms-frontend";
+export const SHOW_DEMO_USERS = import.meta.env.VITE_SHOW_DEMO_USERS === "true";

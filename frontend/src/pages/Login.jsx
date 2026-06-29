@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { KEYCLOAK_REALM, KEYCLOAK_URL, SHOW_DEMO_USERS } from '../config'
 
 const Login = () => {
   const { initialized, authenticated, keycloak } = useAuth()
@@ -66,26 +67,28 @@ const Login = () => {
               Sign in with Keycloak
             </button>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-border bg-background p-4">
-                <p className="text-sm font-semibold text-text">Demo users</p>
-                <ul className="mt-2 space-y-1 text-xs text-text-secondary">
-                  <li>admin@dms.local</li>
-                  <li>manager@dms.local</li>
-                  <li>contributor@dms.local</li>
-                  <li>viewer@dms.local</li>
-                  <li className="pt-1 text-text-secondary/80">Password: changeme_dev (dev only)</li>
-                </ul>
-              </div>
+            <div className={`grid gap-4 ${SHOW_DEMO_USERS ? 'sm:grid-cols-2' : ''}`}>
+              {SHOW_DEMO_USERS && (
+                <div className="rounded-2xl border border-border bg-background p-4">
+                  <p className="text-sm font-semibold text-text">Demo users</p>
+                  <ul className="mt-2 space-y-1 text-xs text-text-secondary">
+                    <li>admin@dms.local</li>
+                    <li>manager@dms.local</li>
+                    <li>contributor@dms.local</li>
+                    <li>viewer@dms.local</li>
+                    <li className="pt-1 text-text-secondary/80">Password: changeme_dev (dev only)</li>
+                  </ul>
+                </div>
+              )}
               <div className="rounded-2xl border border-border bg-background p-4">
                 <p className="text-sm font-semibold text-text">Keycloak</p>
                 <p className="mt-2 text-xs text-text-secondary">
                   Running at{' '}
-                  <a href="http://localhost:8080" target="_blank" rel="noopener noreferrer" className="text-primary underline">
-                    localhost:8080
+                  <a href={KEYCLOAK_URL} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    {KEYCLOAK_URL}
                   </a>
                   <br />
-                  Realm: <span className="font-mono">dms</span>
+                  Realm: <span className="font-mono">{KEYCLOAK_REALM}</span>
                 </p>
               </div>
             </div>

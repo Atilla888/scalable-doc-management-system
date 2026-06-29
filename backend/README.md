@@ -28,6 +28,13 @@ On Linux or macOS use `./mvnw spring-boot:run`. If Keycloak is not on localhost:
 
 Any other path under `/api/**` requires authentication. Paths under `/api/admin/**` additionally require the `dms_admin` realm role. Spring maps Keycloak roles from `realm_access.roles` to authorities without a `ROLE_` prefix, so security expressions use `hasAuthority("dms_admin")`, not `hasRole(...)`.
 
+### Administration
+
+- `GET /api/admin/overview` — admin-only aggregate used by the AdminPage. Users, enabled state, realm roles, and departments come from the live Keycloak Admin API. Document/folder counts and MongoDB status come from the live database. Permission scopes mirror the actions enforced by `PermissionService`.
+- `GET /api/admin/ocr` and `POST /api/admin/ocr/{id}/retry` — list and retry OCR jobs.
+
+The backend uses the confidential `dms-admin-api` service account for read-only directory access. Its secret is supplied through `DMS_KEYCLOAK_ADMIN_CLIENT_SECRET`; it must never be exposed through frontend variables.
+
 ### Folders and search
 
 All routes require a Bearer token.
@@ -52,6 +59,12 @@ All document routes require a Bearer token.
 - `DELETE /api/documents/{id}` — soft-delete (`document_status = deleted`); GridFS file is kept in MVP. Requires **delete**.
 - `GET /api/documents/{id}/permissions` — requires **read**; the full ACL is only returned to `dms_admin` or users with **managePermissions** (others get their effective permissions only).
 - `PUT /api/documents/{id}/permissions` — replace the document ACL. Requires **managePermissions** (or `dms_admin`).
+
+Upload size is limited before controller execution and checked again by the document service. Accepted
+types are configured with `DMS_ALLOWED_UPLOAD_TYPES`; the default allow-list is PDF, PNG, JPEG, plain
+text, and DOCX. The validator requires the declared MIME type, filename extension, and file signature
+to agree. Invalid types return `415`, oversized files return `413`, and filenames containing path
+separators are rejected.
 
 ### CMIS interface (Browser / JSON binding)
 
