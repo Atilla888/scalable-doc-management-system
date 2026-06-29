@@ -39,7 +39,7 @@ All routes require a Bearer token.
 - `GET /api/folders/tree` — flat list (`{ id, name, path }`) of every folder the caller can **read**, ordered by path. Used by the UI as the destination picker when moving a folder.
 - `GET /api/folders/root` — root folder view: folder metadata, breadcrumb, subfolders, and active documents.
 - `GET /api/folders/{id}` — same shape for any folder; 404 if the folder does not exist.
-- `GET /api/search?q=...` — searches active documents by title, description, EAP number, and OCR text (case-insensitive), returning id, title, EAP number, type, OCR status, and a snippet.
+- `GET /api/search` — full-text search over **active, indexed** documents (title, description, OCR text), with RBAC applied **inside** the query (never post-filtered). Params: `query` (or `q`); optional filters `type` (document type), `department` (organizational unit), `folder` (folder id), `status` (OCR status), `dateFrom`/`dateTo` (`yyyy-MM-dd`, inclusive); `sort` (`date_desc` default, `date_asc`, `title_asc`, `title_desc`); `page` (default 0), `limit` (default 20, max 100). Returns a paged object `{ content: [ { id, title, eapNumber, documentType, snippet, parentFolderId, updatedAt, ocrStatus } ], page, limit, totalElements, totalPages, hasMore }`. The `snippet` is centred on the matched term so OCR/description hits are shown in context (the client highlights the term). A search with neither a term nor any filter returns an empty page rather than dumping the whole archive.
 
 ### Documents (multipart upload)
 

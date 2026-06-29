@@ -201,6 +201,42 @@ class SearchApiIntegrationTest {
         mockMvc.perform(get("/api/search?query=anything")).andExpect(status().isUnauthorized());
     }
 
+    // ---- filters, sorting, pagination metadata ----------------------------
+
+    @Test
+    void filterByDocumentTypeNarrowsResults() throws Exception {
+        String keyword = uniqueKeyword();
+        String id = insertDoc(titleWith(keyword), "contributor", List.of(), List.of(), "indexed", "active");
+
+        // insertDoc stores documentType = "report".
+        assertThat(idsOf(search(CONTRIBUTOR, keyword, "&type=report"))).contains(id);
+        assertThat(idsOf(search(CONTRIBUTOR, keyword, "&type=invoice"))).doesNotContain(id);
+    }
+
+    @Test
+    void filterByStatusUsesOcrStatus() throws Exception {
+        String keyword = uniqueKeyword();
+        String id = insertDoc(titleWith(keyword), "contributor", List.of(), List.of(), "indexed", "active");
+
+        // insertDoc stores ocr_status = "completed".
+        assertThat(idsOf(search(CONTRIBUTOR, keyword, "&status=completed"))).contains(id);
+        assertThat(idsOf(search(CONTRIBUTOR, keyword, "&status=pending"))).doesNotContain(id);
+    }
+
+    @Test
+    void responseExposesPaginationMetadata() throws Exception {
+        String keyword = uniqueKeyword();
+        insertDoc(titleWith(keyword), "contributor", List.of(), List.of(), "indexed", "active");
+
+        JsonNode response = search(CONTRIBUTOR, keyword, "&limit=10");
+
+        assertThat(response.get("totalElements").asLong()).isGreaterThanOrEqualTo(1);
+        assertThat(response.get("limit").asInt()).isEqualTo(10);
+        assertThat(response.has("page")).isTrue();
+        assertThat(response.has("hasMore")).isTrue();
+        assertThat(response.has("totalPages")).isTrue();
+    }
+
     // ---- helpers ----------------------------------------------------------
 
     private JsonNode search(String token, String query, String extraParams) throws Exception {
@@ -213,9 +249,11 @@ class SearchApiIntegrationTest {
         return objectMapper.readTree(result.getResponse().getContentAsString());
     }
 
-    private List<String> idsOf(JsonNode array) {
+    private List<String> idsOf(JsonNode response) {
         List<String> ids = new ArrayList<>();
-        array.forEach(node -> ids.add(node.get("id").asText()));
+        // The endpoint returns a paged object { content: [...] }; tolerate a bare array too.
+        JsonNode content = response.has("content") ? response.get("content") : response;
+        content.forEach(node -> ids.add(node.get("id").asText()));
         return ids;
     }
 
