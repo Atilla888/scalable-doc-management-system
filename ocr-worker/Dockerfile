@@ -12,7 +12,8 @@ RUN apt-get update \
         python3-pip \
         tesseract-ocr \
         poppler-utils \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --no-create-home --uid 10001 appuser
 
 WORKDIR /app
 
@@ -20,5 +21,7 @@ COPY requirements.txt ./
 RUN pip3 install -r requirements.txt
 
 COPY config.py ocr.py worker.py ./
+
+USER appuser
 
 CMD ["python3", "worker.py"]
