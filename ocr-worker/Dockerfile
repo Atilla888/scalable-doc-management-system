@@ -1,5 +1,4 @@
-# OCR worker: Debian slim base with Tesseract + Poppler, per Issue spec.
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
