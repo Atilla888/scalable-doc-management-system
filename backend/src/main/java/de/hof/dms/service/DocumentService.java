@@ -45,18 +45,21 @@ public class DocumentService {
     private final GridFsTemplate gridFsTemplate;
     private final EapNumberService eapNumberService;
     private final PermissionService permissionService;
+    private final UploadValidationService uploadValidationService;
 
     public DocumentService(
             DocumentRepository documentRepository,
             FolderRepository folderRepository,
             GridFsTemplate gridFsTemplate,
             EapNumberService eapNumberService,
-            PermissionService permissionService) {
+            PermissionService permissionService,
+            UploadValidationService uploadValidationService) {
         this.documentRepository = documentRepository;
         this.folderRepository = folderRepository;
         this.gridFsTemplate = gridFsTemplate;
         this.eapNumberService = eapNumberService;
         this.permissionService = permissionService;
+        this.uploadValidationService = uploadValidationService;
     }
 
     public DocumentUploadResponse upload(
@@ -70,9 +73,8 @@ public class DocumentService {
             CurrentUser user) {
 
         validateRequiredMetadata(title, documentType, parentId);
-        if (file == null || file.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "file is required");
-        }
+        UploadValidationService.ValidatedUpload validatedFile =
+                uploadValidationService.validate(file);
 
         Folder parent =
                 folderRepository
@@ -87,14 +89,8 @@ public class DocumentService {
         String category = eapCategory != null && !eapCategory.isBlank() ? eapCategory.trim() : "1000";
         String eapNumber = eapNumberService.generateNext(category, user.department());
 
-        String contentType =
-                file.getContentType() != null && !file.getContentType().isBlank()
-                        ? file.getContentType()
-                        : "application/octet-stream";
-        String fileName =
-                file.getOriginalFilename() != null && !file.getOriginalFilename().isBlank()
-                        ? file.getOriginalFilename()
-                        : "upload.bin";
+        String contentType = validatedFile.contentType();
+        String fileName = validatedFile.fileName();
 
         ObjectId gridFsId;
         try {
@@ -166,18 +162,10 @@ public class DocumentService {
     public DocumentMetadataResponse setContent(String id, MultipartFile file, CurrentUser user) {
         DocumentRecord record = findActiveDocument(id);
         permissionService.requireDocument(user, record, PermissionService.Action.UPDATE);
-        if (file == null || file.isEmpty()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "content is required");
-        }
-
-        String contentType =
-                file.getContentType() != null && !file.getContentType().isBlank()
-                        ? file.getContentType()
-                        : "application/octet-stream";
-        String fileName =
-                file.getOriginalFilename() != null && !file.getOriginalFilename().isBlank()
-                        ? file.getOriginalFilename()
-                        : record.getFileName();
+        UploadValidationService.ValidatedUpload validatedFile =
+                uploadValidationService.validate(file);
+        String contentType = validatedFile.contentType();
+        String fileName = validatedFile.fileName();
 
         ObjectId gridFsId;
         try {
