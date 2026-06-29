@@ -1,5 +1,6 @@
 package de.hof.dms.service;
 
+import de.hof.dms.domain.DocumentRecord;
 import de.hof.dms.domain.Folder;
 import de.hof.dms.domain.FolderAccess;
 import de.hof.dms.domain.FolderAcl;
@@ -10,6 +11,7 @@ import de.hof.dms.dto.FolderPage;
 import de.hof.dms.dto.FolderResponse;
 import de.hof.dms.dto.FolderSummary;
 import de.hof.dms.dto.FolderViewResponse;
+import de.hof.dms.dto.UpdateFolderRequest;
 import de.hof.dms.exception.ApiException;
 import de.hof.dms.repository.DocumentRepository;
 import de.hof.dms.repository.FolderRepository;
@@ -70,6 +72,21 @@ public class FolderService {
      * pagination applied after the permission filter so the totals reflect what
      * the caller can actually see.
      */
+    /**
+     * Flat list of every folder the caller may <b>read</b>, ordered by path.
+     * Used by the UI as the destination picker when moving a folder.
+     */
+    public List<FolderSummary> listAllFolders(CurrentUser user) {
+        return folderRepository.findAll().stream()
+                .filter(f -> permissionService.canFolder(user, f, PermissionService.Action.READ))
+                .sorted(
+                        java.util.Comparator.comparing(
+                                Folder::getPath,
+                                java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .map(FolderSummary::from)
+                .toList();
+    }
+
     public FolderPage listFolders(String parentId, int page, int size, CurrentUser user) {
         Folder parent = resolveParent(parentId);
         permissionService.requireFolder(user, parent, PermissionService.Action.READ);
@@ -129,6 +146,137 @@ public class FolderService {
         folder.setAcl(buildFolderAcl(user, inheritFromParent));
 
         return FolderResponse.from(folderRepository.save(folder));
+    }
+
+    /**
+     * Renames and/or moves a folder. The materialized {@code path} of the folder
+     * and of its entire subtree is rewritten so paths stay consistent. Requires
+     * <b>update</b> on the folder, plus <b>create</b> on the destination parent
+     * when moving. The root folder cannot be modified, a folder cannot be moved
+     * into itself or a descendant, and the destination must not already contain a
+     * sibling with the same name.
+     */
+    public FolderResponse updateFolder(String id, UpdateFolderRequest request, CurrentUser user) {
+        Folder folder =
+                folderRepository
+                        .findById(id)
+                        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Folder not found"));
+        if (ROOT_PATH.equals(folder.getPath())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "The root folder cannot be modified");
+        }
+        permissionService.requireFolder(user, folder, PermissionService.Action.UPDATE);
+
+        String newName =
+                request != null && request.name() != null && !request.name().isBlank()
+                        ? request.name().trim()
+                        : folder.getName();
+        if (newName.contains("/")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "name must not contain '/'");
+        }
+
+        boolean moving =
+                request != null
+                        && request.parentId() != null
+                        && !request.parentId().isBlank()
+                        && !request.parentId().equals(folder.getParentId());
+
+        Folder newParent;
+        if (moving) {
+            newParent =
+                    folderRepository
+                            .findById(request.parentId())
+                            .orElseThrow(
+                                    () -> new ApiException(
+                                            HttpStatus.NOT_FOUND, "Parent folder not found"));
+            if (newParent.getId().equals(folder.getId())
+                    || newParent.getPath().startsWith(folder.getPath())) {
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "A folder cannot be moved into itself or one of its descendants");
+            }
+            permissionService.requireFolder(user, newParent, PermissionService.Action.CREATE);
+        } else {
+            newParent = parentOf(folder);
+        }
+
+        String parentPath = newParent != null ? newParent.getPath() : ROOT_PATH;
+        String newPath = parentPath + newName + "/";
+
+        if (!newPath.equals(folder.getPath()) && folderRepository.findByPath(newPath).isPresent()) {
+            throw new ApiException(
+                    HttpStatus.CONFLICT, "A folder with this name already exists here");
+        }
+
+        // Rewrite the path prefix for the folder and every descendant.
+        String oldPath = folder.getPath();
+        List<Folder> subtree = folderRepository.findByPathStartingWith(oldPath);
+        Folder target = folder;
+        for (Folder node : subtree) {
+            node.setPath(newPath + node.getPath().substring(oldPath.length()));
+            if (node.getId().equals(folder.getId())) {
+                target = node;
+            }
+        }
+        target.setName(newName);
+        if (moving) {
+            target.setParentId(newParent.getId());
+        }
+        folderRepository.saveAll(subtree);
+        return FolderResponse.from(target);
+    }
+
+    /**
+     * Deletes a folder. Requires <b>delete</b> on the folder; the root folder can
+     * never be deleted. A non-empty folder is rejected unless {@code recursive}
+     * is set, in which case the whole subtree is removed and the documents it
+     * contains are soft-deleted.
+     */
+    public void deleteFolder(String id, boolean recursive, CurrentUser user) {
+        Folder folder =
+                folderRepository
+                        .findById(id)
+                        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Folder not found"));
+        if (ROOT_PATH.equals(folder.getPath())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "The root folder cannot be deleted");
+        }
+        permissionService.requireFolder(user, folder, PermissionService.Action.DELETE);
+
+        if (!recursive) {
+            if (folderHasChildren(id)) {
+                throw new ApiException(HttpStatus.CONFLICT, "Folder is not empty");
+            }
+            folderRepository.delete(folder);
+            return;
+        }
+
+        List<Folder> subtree = folderRepository.findByPathStartingWith(folder.getPath());
+        for (Folder node : subtree) {
+            List<DocumentRecord> documents =
+                    documentRepository.findByFolderIdAndDocumentStatusOrderByUploadDateDesc(
+                            node.getId(), DocumentService.STATUS_ACTIVE);
+            documents.forEach(doc -> doc.setDocumentStatus(DocumentService.STATUS_DELETED));
+            if (!documents.isEmpty()) {
+                documentRepository.saveAll(documents);
+            }
+        }
+        folderRepository.deleteAll(subtree);
+    }
+
+    private boolean folderHasChildren(String folderId) {
+        if (!folderRepository.findByParentIdOrderByNameAsc(folderId).isEmpty()) {
+            return true;
+        }
+        return !documentRepository
+                .findByFolderIdAndDocumentStatusOrderByUploadDateDesc(
+                        folderId, DocumentService.STATUS_ACTIVE)
+                .isEmpty();
+    }
+
+    private Folder parentOf(Folder folder) {
+        if (folder.getParentId() == null || folder.getParentId().isBlank()) {
+            return null;
+        }
+        return folderRepository.findById(folder.getParentId()).orElse(null);
     }
 
     private Folder resolveParent(String parentId) {

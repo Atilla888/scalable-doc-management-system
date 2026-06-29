@@ -11,4 +11,7 @@ public interface FolderRepository extends MongoRepository<Folder, String> {
     Optional<Folder> findByPath(String path);
 
     List<Folder> findByParentIdOrderByNameAsc(String parentId);
+
+    /** A folder and its whole subtree share the same materialized-path prefix. */
+    List<Folder> findByPathStartingWith(String pathPrefix);
 }

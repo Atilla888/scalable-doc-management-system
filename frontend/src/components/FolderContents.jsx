@@ -15,10 +15,11 @@ function formatDate(value) {
  * Nothing is filtered client-side — the list reflects exactly what the API
  * allowed the current user to see.
  */
-const FolderContents = ({ view }) => {
+const FolderContents = ({ view, canManage = false, onRename, onMove, onDelete }) => {
   const subfolders = view?.subfolders ?? [];
   const documents = view?.documents ?? [];
   const isEmpty = subfolders.length === 0 && documents.length === 0;
+  const showActions = canManage && (onRename || onMove || onDelete);
 
   if (isEmpty) {
     return (
@@ -38,6 +39,7 @@ const FolderContents = ({ view }) => {
             <th className="px-5 py-3 font-medium">Type</th>
             <th className="px-5 py-3 font-medium">OCR</th>
             <th className="px-5 py-3 font-medium">Uploaded</th>
+            {showActions && <th className="px-5 py-3 font-medium text-right">Actions</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -52,6 +54,39 @@ const FolderContents = ({ view }) => {
               <td className="px-5 py-3 text-text-secondary">Folder</td>
               <td className="px-5 py-3 text-text-secondary">—</td>
               <td className="px-5 py-3 text-text-secondary">—</td>
+              {showActions && (
+                <td className="px-5 py-3">
+                  <div className="flex justify-end gap-3">
+                    {onRename && (
+                      <button
+                        type="button"
+                        onClick={() => onRename(folder)}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        Rename
+                      </button>
+                    )}
+                    {onMove && (
+                      <button
+                        type="button"
+                        onClick={() => onMove(folder)}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        Move
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        type="button"
+                        onClick={() => onDelete(folder)}
+                        className="text-sm font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
           {documents.map((doc) => (
@@ -67,6 +102,7 @@ const FolderContents = ({ view }) => {
                 <OcrStatusBadge status={doc.ocrStatus} />
               </td>
               <td className="px-5 py-3 text-text-secondary">{formatDate(doc.uploadDate)}</td>
+              {showActions && <td className="px-5 py-3" />}
             </tr>
           ))}
         </tbody>

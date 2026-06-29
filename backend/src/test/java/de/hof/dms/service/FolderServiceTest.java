@@ -3,6 +3,7 @@ package de.hof.dms.service;
 import de.hof.dms.domain.Folder;
 import de.hof.dms.dto.CreateFolderRequest;
 import de.hof.dms.dto.FolderResponse;
+import de.hof.dms.dto.UpdateFolderRequest;
 import de.hof.dms.exception.ApiException;
 import de.hof.dms.repository.DocumentRepository;
 import de.hof.dms.repository.FolderRepository;
@@ -11,12 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -196,6 +199,128 @@ class FolderServiceTest {
         var secondPage = service.listFolders(null, 1, 2, contributor());
         assertThat(secondPage.content()).hasSize(1);
         assertThat(secondPage.content().get(0).id()).isEqualTo("c-id");
+    }
+
+    // ---- rename / move / delete ------------------------------------------
+
+    @Test
+    void renameRewritesPathOfFolderAndSubtree() {
+        Folder finance = folder("f", "Finance", "/Finance/", "root-id");
+        Folder child = folder("c", "2026", "/Finance/2026/", "f");
+        when(folderRepository.findById("f")).thenReturn(Optional.of(finance));
+        when(folderRepository.findById("root-id")).thenReturn(Optional.of(root()));
+        when(folderRepository.findByPathStartingWith("/Finance/"))
+                .thenReturn(new ArrayList<>(List.of(finance, child)));
+        when(folderRepository.findByPath("/Reports/")).thenReturn(Optional.empty());
+
+        FolderResponse response =
+                service.updateFolder("f", new UpdateFolderRequest("Reports", null), contributor());
+
+        assertThat(response.name()).isEqualTo("Reports");
+        assertThat(response.path()).isEqualTo("/Reports/");
+        // The descendant's path prefix was rewritten too.
+        assertThat(child.getPath()).isEqualTo("/Reports/2026/");
+    }
+
+    @Test
+    void moveReparentsAndRewritesPath() {
+        Folder finance = folder("f", "Finance", "/Finance/", "root-id");
+        Folder archive = folder("p", "Archive", "/Archive/", "root-id");
+        when(folderRepository.findById("f")).thenReturn(Optional.of(finance));
+        when(folderRepository.findById("p")).thenReturn(Optional.of(archive));
+        when(folderRepository.findByPathStartingWith("/Finance/"))
+                .thenReturn(new ArrayList<>(List.of(finance)));
+        when(folderRepository.findByPath("/Archive/Finance/")).thenReturn(Optional.empty());
+
+        FolderResponse response =
+                service.updateFolder("f", new UpdateFolderRequest(null, "p"), contributor());
+
+        assertThat(response.path()).isEqualTo("/Archive/Finance/");
+        assertThat(response.parentId()).isEqualTo("p");
+    }
+
+    @Test
+    void movingFolderIntoItsOwnDescendantIsRejected() {
+        Folder finance = folder("f", "Finance", "/Finance/", "root-id");
+        Folder descendant = folder("d", "2026", "/Finance/2026/", "f");
+        when(folderRepository.findById("f")).thenReturn(Optional.of(finance));
+        when(folderRepository.findById("d")).thenReturn(Optional.of(descendant));
+
+        assertThatThrownBy(
+                        () -> service.updateFolder("f", new UpdateFolderRequest(null, "d"), contributor()))
+                .isInstanceOf(ApiException.class)
+                .extracting(ex -> ((ApiException) ex).getStatus())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void renameToExistingSiblingNameReturns409() {
+        Folder finance = folder("f", "Finance", "/Finance/", "root-id");
+        when(folderRepository.findById("f")).thenReturn(Optional.of(finance));
+        when(folderRepository.findById("root-id")).thenReturn(Optional.of(root()));
+        when(folderRepository.findByPath("/Reports/")).thenReturn(Optional.of(new Folder()));
+
+        assertThatThrownBy(
+                        () -> service.updateFolder("f", new UpdateFolderRequest("Reports", null), contributor()))
+                .isInstanceOf(ApiException.class)
+                .extracting(ex -> ((ApiException) ex).getStatus())
+                .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void renamingRootIsRejected() {
+        when(folderRepository.findById("root-id")).thenReturn(Optional.of(root()));
+
+        assertThatThrownBy(
+                        () -> service.updateFolder("root-id", new UpdateFolderRequest("X", null), contributor()))
+                .isInstanceOf(ApiException.class)
+                .extracting(ex -> ((ApiException) ex).getStatus())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void deletingNonEmptyFolderWithoutRecursiveReturns409() {
+        Folder finance = folder("f", "Finance", "/Finance/", "root-id");
+        when(folderRepository.findById("f")).thenReturn(Optional.of(finance));
+        when(folderRepository.findByParentIdOrderByNameAsc("f"))
+                .thenReturn(List.of(folder("c", "2026", "/Finance/2026/", "f")));
+
+        assertThatThrownBy(() -> service.deleteFolder("f", false, contributor()))
+                .isInstanceOf(ApiException.class)
+                .extracting(ex -> ((ApiException) ex).getStatus())
+                .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void recursiveDeleteRemovesWholeSubtree() {
+        Folder finance = folder("f", "Finance", "/Finance/", "root-id");
+        Folder child = folder("c", "2026", "/Finance/2026/", "f");
+        when(folderRepository.findById("f")).thenReturn(Optional.of(finance));
+        when(folderRepository.findByPathStartingWith("/Finance/"))
+                .thenReturn(new ArrayList<>(List.of(finance, child)));
+
+        service.deleteFolder("f", true, contributor());
+
+        verify(folderRepository).deleteAll(anyList());
+    }
+
+    @Test
+    void deletingRootIsRejected() {
+        when(folderRepository.findById("root-id")).thenReturn(Optional.of(root()));
+
+        assertThatThrownBy(() -> service.deleteFolder("root-id", true, contributor()))
+                .isInstanceOf(ApiException.class)
+                .extracting(ex -> ((ApiException) ex).getStatus())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    private Folder folder(String id, String name, String path, String parentId) {
+        Folder folder = new Folder();
+        folder.setId(id);
+        folder.setName(name);
+        folder.setPath(path);
+        folder.setParentId(parentId);
+        return folder;
     }
 
     private Folder childFolder(String id, String name) {
