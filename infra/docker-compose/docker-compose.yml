@@ -33,6 +33,7 @@ services:
       KC_HOSTNAME_PORT: 8080
       KC_HOSTNAME_STRICT: false
       KC_HTTP_ENABLED: true
+      DMS_KEYCLOAK_ADMIN_CLIENT_SECRET: ${DMS_KEYCLOAK_ADMIN_CLIENT_SECRET:-dms-admin-api-dev-only}
     volumes:
       - ../keycloak/dms-realm.json:/opt/keycloak/data/import/dms-realm.json:ro
     ports:
@@ -77,6 +78,10 @@ services:
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/dms/protocol/openid-connect/certs
       - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_APP_USER}:${MONGO_APP_PASSWORD}@mongodb:27017/dms?authSource=dms
       - SERVER_PORT=8081
+      - DMS_KEYCLOAK_ADMIN_BASE_URL=http://keycloak:8080
+      - DMS_KEYCLOAK_ADMIN_REALM=dms
+      - DMS_KEYCLOAK_ADMIN_CLIENT_ID=dms-admin-api
+      - DMS_KEYCLOAK_ADMIN_CLIENT_SECRET=${DMS_KEYCLOAK_ADMIN_CLIENT_SECRET:-dms-admin-api-dev-only}
     depends_on:
       keycloak:
         condition: service_healthy

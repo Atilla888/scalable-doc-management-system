@@ -53,6 +53,19 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "dms-admin-api",
+      "name": "DMS Backend Keycloak Directory Client",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "${DMS_KEYCLOAK_ADMIN_CLIENT_SECRET}",
+      "protocol": "openid-connect"
     }
   ],
   "users": [
@@ -112,6 +125,14 @@
         { "type": "password", "value": "changeme_dev", "temporary": false }
       ],
       "realmRoles": ["dms_viewer"]
+    },
+    {
+      "username": "service-account-dms-admin-api",
+      "enabled": true,
+      "serviceAccountClientId": "dms-admin-api",
+      "clientRoles": {
+        "realm-management": ["query-users", "view-users", "view-realm"]
+      }
     }
   ]
 }
