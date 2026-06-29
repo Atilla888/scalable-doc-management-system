@@ -1,5 +1,13 @@
 db = db.getSiblingDB("dms");
 
+// Application user with readWrite on dms only — the backend and OCR worker
+// use this instead of the root account.
+db.createUser({
+    user: process.env.MONGO_APP_USER,
+    pwd: process.env.MONGO_APP_PASSWORD,
+    roles: [{ role: "readWrite", db: "dms" }]
+});
+
 if (!db.getCollectionNames().includes("folders")) {
     db.createCollection("folders");
 }
