@@ -2,13 +2,11 @@
   "realm": "dms",
   "displayName": "DMS Realm",
   "enabled": true,
-  "registrationAllowed": true,
-  "registrationEmailAsUsername": true,
+  "registrationAllowed": false,
   "resetPasswordAllowed": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
-  "sslRequired": "none",
-  "accessTokenLifespan": 3600,
+  "sslRequired": "external",
   "roles": {
     "realm": [
       { "name": "dms_admin", "description": "Full administrative access to the DMS" },
@@ -29,14 +27,8 @@
       "attributes": {
         "pkce.code.challenge.method": "S256"
       },
-      "redirectUris": [
-        "http://localhost:5173/*",
-        "http://localhost:80/*"
-      ],
-      "webOrigins": [
-        "http://localhost:5173",
-        "http://localhost:80"
-      ],
+      "redirectUris": ["${DMS_FRONTEND_URL}/*"],
+      "webOrigins": ["${DMS_FRONTEND_URL}"],
       "protocol": "openid-connect",
       "protocolMappers": [
         {
@@ -69,63 +61,6 @@
     }
   ],
   "users": [
-    {
-      "username": "admin",
-      "email": "admin@dms.local",
-      "firstName": "Admin",
-      "lastName": "User",
-      "enabled": true,
-      "emailVerified": true,
-      "credentials": [
-        { "type": "password", "value": "${DMS_DEMO_USER_PASSWORD}", "temporary": false }
-      ],
-      "realmRoles": ["dms_admin"]
-    },
-    {
-      "username": "manager",
-      "email": "manager@dms.local",
-      "firstName": "Department",
-      "lastName": "Manager",
-      "enabled": true,
-      "emailVerified": true,
-      "attributes": {
-        "department": ["ITDLZ"]
-      },
-      "credentials": [
-        { "type": "password", "value": "${DMS_DEMO_USER_PASSWORD}", "temporary": false }
-      ],
-      "realmRoles": ["dms_department_manager"]
-    },
-    {
-      "username": "contributor",
-      "email": "contributor@dms.local",
-      "firstName": "Document",
-      "lastName": "Contributor",
-      "enabled": true,
-      "emailVerified": true,
-      "attributes": {
-        "department": ["ITDLZ"]
-      },
-      "credentials": [
-        { "type": "password", "value": "${DMS_DEMO_USER_PASSWORD}", "temporary": false }
-      ],
-      "realmRoles": ["dms_contributor"]
-    },
-    {
-      "username": "viewer",
-      "email": "viewer@dms.local",
-      "firstName": "Document",
-      "lastName": "Viewer",
-      "enabled": true,
-      "emailVerified": true,
-      "attributes": {
-        "department": ["ITDLZ"]
-      },
-      "credentials": [
-        { "type": "password", "value": "${DMS_DEMO_USER_PASSWORD}", "temporary": false }
-      ],
-      "realmRoles": ["dms_viewer"]
-    },
     {
       "username": "service-account-dms-admin-api",
       "enabled": true,
