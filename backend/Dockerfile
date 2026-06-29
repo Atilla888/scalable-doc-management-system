@@ -1,28 +1,27 @@
-# ── Build stage ───────────────────────────────────────────────────────────────
-# maven:3-eclipse-temurin-21 is based on Ubuntu/Debian — use trixie-based image
-FROM maven:3.9-eclipse-temurin-21 AS builder
+FROM debian:trixie-slim AS builder
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        maven openjdk-21-jdk-headless ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-
-# Cache dependency layer separately from source
 COPY pom.xml .
 RUN mvn dependency:go-offline -q
-
 COPY src ./src
 RUN mvn package -DskipTests -q
 
-# ── Production stage (Debian 13 trixie + JRE) ─────────────────────────────────
 FROM debian:trixie-slim AS prod
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        openjdk-21-jre-headless \
-        curl \
-    && rm -rf /var/lib/apt/lists/*
+        openjdk-21-jre-headless curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --no-create-home --uid 10001 appuser
 
 WORKDIR /app
-
 COPY --from=builder /build/target/*.jar app.jar
+USER appuser
 
 EXPOSE 8081
 
