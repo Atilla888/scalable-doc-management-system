@@ -28,7 +28,10 @@ FROM debian:trixie-slim AS prod
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends nginx \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # Debian ships a default site that grabs port 80 and 404s unknown paths,
+    # shadowing our SPA fallback. Drop it so client-side routes work.
+    && rm -f /etc/nginx/sites-enabled/default
 
 COPY --from=builder /app/dist /var/www/html
 
