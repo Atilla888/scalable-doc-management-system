@@ -1,0 +1,114 @@
+# MongoDB is the one stateful piece, so it runs as a StatefulSet with its own PVC.
+# Document metadata and the GridFS binaries have to survive a pod restart.
+#
+# We run a single node for now. A real replica set with automatic failover is the
+# obvious next step (see README "Known limitations") — using a StatefulSet here means
+# that's a config change later, not a rewrite.
+---
+# Headless service so the pod gets a stable name, mongodb.dms.svc.cluster.local.
+# Backend and OCR worker just connect to "mongodb".
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: dms
+  labels:
+    app: mongodb
+spec:
+  clusterIP: None
+  selector:
+    app: mongodb
+  ports:
+    - name: mongo
+      port: 27017
+      targetPort: 27017
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+  namespace: dms
+spec:
+  serviceName: mongodb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:7
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 27017
+              name: mongo
+          env:
+            # Root account is just for init and turning on --auth.
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: mongo-root-username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: mongo-root-password
+            - name: MONGO_INITDB_DATABASE
+              value: "dms"
+            # mongo-init.js reads these to create the limited app user the app uses.
+            - name: MONGO_APP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: mongo-app-username
+            - name: MONGO_APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: mongo-app-password
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+            # Runs once on an empty volume: app user, collections, indexes, root folder.
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          readinessProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+      volumes:
+        - name: init-script
+          configMap:
+            # deploy.sh builds this from scripts/mongo-init.js so there's one copy to maintain.
+            name: mongo-init
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
