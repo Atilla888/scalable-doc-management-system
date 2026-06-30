@@ -80,14 +80,15 @@ spec:
             - name: realm-import
               mountPath: /opt/keycloak/data/import
               readOnly: true
-          # Keycloak takes a while to boot, so the startup probe gives it ~150s before
-          # liveness/readiness take over. Health lives on the management port (9000).
+          # Keycloak re-augments on every start-dev boot (~1 min of CPU before the
+          # server even listens), so the startup probe gets a generous ~5 min budget
+          # before liveness/readiness take over. Health lives on the management port (9000).
           startupProbe:
             httpGet:
               path: /health/started
               port: 9000
             periodSeconds: 5
-            failureThreshold: 30
+            failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /health/ready
@@ -102,10 +103,11 @@ spec:
             failureThreshold: 5
           resources:
             requests:
-              cpu: "250m"
+              cpu: "500m"
               memory: "512Mi"
             limits:
-              cpu: "1000m"
+              # Extra CPU so the one-off augmentation finishes fast instead of dragging.
+              cpu: "2000m"
               memory: "1Gi"
       volumes:
         - name: realm-import
