@@ -1,0 +1,8 @@
+# Keep the whole stack in its own namespace so we can look at it, scale it, or tear
+# it down as one unit (kubectl -n dms ...).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dms
+  labels:
+    app.kubernetes.io/part-of: dms
