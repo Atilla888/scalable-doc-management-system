@@ -1,0 +1,113 @@
+# Keycloak handles login and imports the dms realm on startup (deploy.sh feeds it
+# the realm JSON via a ConfigMap).
+#
+# KC_HOSTNAME=localhost looks odd but it's deliberate: tokens get issued with
+# iss=http://localhost:8080/realms/dms, which is what the backend checks for, and the
+# browser reaches Keycloak at localhost:8080 through the SSH tunnel. Same trick as the
+# Compose setup, so the realm's redirect URIs and the token issuer always agree.
+#
+# One replica, start-dev. Clustered Keycloak HA isn't worth it here (see README).
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: dms
+  labels:
+    app: keycloak
+spec:
+  type: NodePort
+  selector:
+    app: keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080      # tunnel this to localhost:8080 on your laptop
+    - name: management
+      port: 9000
+      targetPort: 9000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: dms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.2
+          imagePullPolicy: IfNotPresent
+          args: ["start-dev", "--import-realm", "--health-enabled=true"]
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: keycloak-admin-username
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: keycloak-admin-password
+            - name: KC_HTTP_PORT
+              value: "8080"
+            - name: KC_MANAGEMENT_PORT
+              value: "9000"
+            - name: KC_HOSTNAME
+              value: "localhost"
+            - name: KC_HOSTNAME_PORT
+              value: "8080"
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9000
+              name: management
+          volumeMounts:
+            - name: realm-import
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+          # Keycloak takes a while to boot, so the startup probe gives it ~150s before
+          # liveness/readiness take over. Health lives on the management port (9000).
+          startupProbe:
+            httpGet:
+              path: /health/started
+              port: 9000
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 9000
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 9000
+            periodSeconds: 20
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+      volumes:
+        - name: realm-import
+          configMap:
+            name: keycloak-realm
