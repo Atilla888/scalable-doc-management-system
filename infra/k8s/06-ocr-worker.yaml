@@ -1,0 +1,51 @@
+# The OCR worker (Python). It polls Mongo for pending documents and pulls the text out
+# of them — straight from the PDF text layer when it's there, Tesseract for scans.
+#
+# It claims each job with an atomic find_one_and_update, so two workers never fight over
+# the same document. That makes running two replicas both safe and useful.
+#
+# No HTTP endpoint, so there's nothing to probe — if the process dies the Deployment
+# just restarts it. The worker also looks after itself: it shrugs off brief Mongo
+# hiccups and requeues anything left stuck in "processing" after a crash.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ocr-worker
+  namespace: dms
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ocr-worker
+  template:
+    metadata:
+      labels:
+        app: ocr-worker
+    spec:
+      containers:
+        - name: ocr-worker
+          image: dms-ocr-worker:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MONGO_APP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: mongo-app-username
+            - name: MONGO_APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: mongo-app-password
+            - name: MONGODB_URI
+              value: "mongodb://$(MONGO_APP_USER):$(MONGO_APP_PASSWORD)@mongodb:27017/dms?authSource=dms"
+            - name: OCR_POLL_INTERVAL_MS
+              value: "5000"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
