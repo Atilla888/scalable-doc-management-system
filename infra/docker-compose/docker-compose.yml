@@ -9,7 +9,10 @@ services:
       MONGO_APP_USER: ${MONGO_APP_USER:-dms_app}
       MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-change-me-app}
     ports:
-      - "127.0.0.1:27017:27017"
+      # Published on 27018 by default (not 27017) so the stack coexists with a
+      # MongoDB already running on the host's 27017. Containers always use 27017
+      # on the internal network; override the host port with MONGO_HOST_PORT.
+      - "127.0.0.1:${MONGO_HOST_PORT:-27018}:27017"
     volumes:
       - mongodb_data:/data/db
       - ../../scripts/mongo-init.js:/docker-entrypoint-initdb.d/01-mongo-init.js:ro

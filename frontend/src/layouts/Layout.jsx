@@ -3,11 +3,10 @@ import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
 
 const Layout = () => {
-  const { user, roles, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const displayName = user?.preferred_username ?? user?.name ?? "User";
-  const primaryRole = roles.find((r) => r.startsWith("dms_")) ?? "No role";
 
   function handleSearch(e) {
     if (e.key === "Enter" && e.target.value.trim()) {
@@ -35,9 +34,6 @@ const Layout = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm text-text-secondary">
-              {primaryRole.replace("dms_", "")}
-            </div>
             <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm text-text font-medium">
               {displayName}
             </div>
