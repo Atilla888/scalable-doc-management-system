@@ -1,9 +1,11 @@
 package de.hof.dms.service;
 
 import de.hof.dms.domain.DocumentRecord;
+import de.hof.dms.domain.Folder;
 import de.hof.dms.dto.SearchCriteria;
 import de.hof.dms.dto.SearchResponse;
 import de.hof.dms.dto.SearchResultEntry;
+import de.hof.dms.repository.FolderRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -34,9 +36,16 @@ public class SearchService {
     static final int MAX_LIMIT = 100;
 
     private final MongoTemplate mongoTemplate;
+    private final FolderRepository folderRepository;
+    private final PermissionService permissionService;
 
-    public SearchService(MongoTemplate mongoTemplate) {
+    public SearchService(
+            MongoTemplate mongoTemplate,
+            FolderRepository folderRepository,
+            PermissionService permissionService) {
         this.mongoTemplate = mongoTemplate;
+        this.folderRepository = folderRepository;
+        this.permissionService = permissionService;
     }
 
     /** Simple keyword search returning just the hits (used by the CMIS query path). */
@@ -189,9 +198,11 @@ public class SearchService {
     }
 
     /**
-     * Per-user permission predicate. Admins bypass it entirely (they may see all
-     * documents); every other caller is restricted to documents whose ACL grants
-     * them via role, department, or ownership. Returning {@code null} means "no
+     * Per-user permission predicate, kept consistent with
+     * {@link PermissionService#canDocument}. Admins bypass it entirely. Every
+     * other caller matches a document when its ACL grants them directly (role,
+     * department, or ownership) <em>or</em> when the document inherits from a
+     * folder the caller is allowed to read. Returning {@code null} means "no
      * restriction" (admin).
      */
     private Criteria permissionFilter(CurrentUser user) {
@@ -209,11 +220,29 @@ public class SearchService {
         if (user.username() != null && !user.username().isBlank()) {
             clauses.add(Criteria.where("acl.owner").is(user.username()));
         }
+        // Documents that inherit from a folder the user may read (mirrors the
+        // folder-chain rule the per-document resolver applies).
+        List<String> readableFolders = readableFolderIds(user);
+        if (!readableFolders.isEmpty()) {
+            clauses.add(
+                    new Criteria()
+                            .andOperator(
+                                    Criteria.where("acl.inheritFromParent").is(true),
+                                    Criteria.where("folder_id").in(readableFolders)));
+        }
 
         if (clauses.isEmpty()) {
             // No identity to match on → match nothing rather than everything.
             return Criteria.where("_id").is(null);
         }
         return new Criteria().orOperator(clauses.toArray(new Criteria[0]));
+    }
+
+    /** Ids of every folder the user is allowed to read (for inheritance matching). */
+    private List<String> readableFolderIds(CurrentUser user) {
+        return folderRepository.findAll().stream()
+                .filter(f -> permissionService.canFolder(user, f, PermissionService.Action.READ))
+                .map(Folder::getId)
+                .toList();
     }
 }

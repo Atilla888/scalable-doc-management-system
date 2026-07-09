@@ -4,10 +4,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.hof.dms.config.TestJwtDecoderConfig;
 import de.hof.dms.domain.DocumentRecord;
+import de.hof.dms.domain.Folder;
 import de.hof.dms.domain.FolderAccess;
 import de.hof.dms.domain.FolderAcl;
 import de.hof.dms.mongo.LocalMongoSupport;
 import de.hof.dms.repository.DocumentRepository;
+import de.hof.dms.repository.FolderRepository;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +66,7 @@ class SearchApiIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private DocumentRepository documentRepository;
+    @Autowired private FolderRepository folderRepository;
     @Autowired private ObjectMapper objectMapper;
 
     // ---- acceptance: authorized vs unauthorized ---------------------------
@@ -88,6 +91,18 @@ class SearchApiIntegrationTest {
         JsonNode results = search(VIEWER, keyword, "");
 
         assertThat(idsOf(results)).contains(id);
+    }
+
+    @Test
+    void viewerFindsDocumentInheritedFromReadableFolder() throws Exception {
+        // A document with no direct grant for the viewer, but inheriting from the
+        // root folder (which every role may read), must be findable by the viewer —
+        // consistent with what canDocument allows when browsing.
+        String rootId = folderRepository.findByPath("/").map(Folder::getId).orElseThrow();
+        String keyword = uniqueKeyword();
+        String id = insertInheritingDoc(titleWith(keyword), "contributor", rootId);
+
+        assertThat(idsOf(search(VIEWER, keyword, ""))).contains(id);
     }
 
     @Test
@@ -317,6 +332,33 @@ class SearchApiIntegrationTest {
         acl.setAllowedDepartments(new ArrayList<>(departments));
         acl.setAccess(new FolderAccess());
         acl.setInheritFromParent(false);
+        doc.setAcl(acl);
+
+        return documentRepository.save(doc).getId();
+    }
+
+    /** An active document with no direct viewer grant that inherits read access from its folder. */
+    private String insertInheritingDoc(String title, String owner, String folderId) {
+        DocumentRecord doc = new DocumentRecord();
+        doc.setTitle(title);
+        doc.setDocumentType("report");
+        doc.setEapNumber("EAP-INH-" + UUID.randomUUID());
+        doc.setFolderId(folderId);
+        doc.setUploadDate(Instant.now());
+        doc.setUploaderId(owner);
+        doc.setOcrStatus("completed");
+        doc.setIndexingStatus("indexed");
+        doc.setDocumentStatus("active");
+
+        FolderAcl acl = new FolderAcl();
+        acl.setOwner(owner);
+        acl.setAllowedUserIds(new ArrayList<>(List.of(owner)));
+        acl.setAllowedRoles(new ArrayList<>());
+        acl.setAllowedDepartments(new ArrayList<>());
+        FolderAccess access = new FolderAccess();
+        access.setRead(true);
+        acl.setAccess(access);
+        acl.setInheritFromParent(true);
         doc.setAcl(acl);
 
         return documentRepository.save(doc).getId();

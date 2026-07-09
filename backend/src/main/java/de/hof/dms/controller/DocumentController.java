@@ -45,7 +45,7 @@ public class DocumentController {
             @RequestPart("parentId") String parentId,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "eapCategory", required = false) String eapCategory,
-            @RequestParam(value = "inheritFromParent", defaultValue = "false") boolean inheritFromParent,
+            @RequestParam(value = "inheritFromParent", defaultValue = "true") boolean inheritFromParent,
             @AuthenticationPrincipal Jwt jwt) {
         DocumentUploadResponse response =
                 documentService.upload(

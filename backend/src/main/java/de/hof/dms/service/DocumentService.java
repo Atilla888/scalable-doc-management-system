@@ -290,12 +290,13 @@ public class DocumentService {
     }
 
     /**
-     * Default ACL for a freshly uploaded document. It is private to its owner
-     * (the uploader) — owners always get full access via the RBAC owner rule,
-     * and admins/department managers via their role rules. When
-     * {@code inheritFromParent} is true, the resolver additionally walks up to
-     * the parent folder's ACL, so colleagues who can read the folder can read
-     * the document. Broader sharing is granted explicitly via
+     * Default ACL for a freshly uploaded document. The uploader is the owner
+     * (full access via the RBAC owner rule); admins/department managers get
+     * access via their role rules. By default {@code inheritFromParent} is true,
+     * so the document takes on the read access of its parent folder — colleagues
+     * (including viewers) who can read the folder can read the document. Uploading
+     * with {@code inheritFromParent=false} keeps the document private to its
+     * owner; broader or narrower sharing is set via
      * PUT /api/documents/{id}/permissions.
      */
     private FolderAcl buildDocumentAcl(CurrentUser user, Folder parent, boolean inheritFromParent) {
