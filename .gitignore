@@ -1,0 +1,11 @@
+# ── Local secrets ─────────────────────────────────────────────────────────
+# Never commit real environment files anywhere in the project — they hold
+# passwords and client secrets. Only the *.example templates are committed.
+.env
+.env.*
+!.env.example
+!.env.prod.example
+
+# Common local/editor noise (subprojects keep their own build ignores).
+.DS_Store
+*.log

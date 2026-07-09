@@ -3,11 +3,11 @@ services:
   mongodb:
     image: mongo:7
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-change-me-root}
       MONGO_INITDB_DATABASE: dms
-      MONGO_APP_USER: ${MONGO_APP_USER}
-      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD}
+      MONGO_APP_USER: ${MONGO_APP_USER:-dms_app}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-change-me-app}
     ports:
       - "127.0.0.1:27017:27017"
     volumes:
@@ -25,8 +25,8 @@ services:
     image: quay.io/keycloak/keycloak:26.2
     command: start-dev --import-realm --health-enabled=true
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_HTTP_PORT: 8080
       KC_MANAGEMENT_PORT: 9000
       KC_HOSTNAME: localhost
@@ -79,7 +79,7 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://localhost:8080/realms/dms
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/dms/protocol/openid-connect/certs
-      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_APP_USER}:${MONGO_APP_PASSWORD}@mongodb:27017/dms?authSource=dms
+      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_APP_USER:-dms_app}:${MONGO_APP_PASSWORD:-change-me-app}@mongodb:27017/dms?authSource=dms
       - SERVER_PORT=8081
       - DMS_KEYCLOAK_ADMIN_BASE_URL=http://keycloak:8080
       - DMS_KEYCLOAK_ADMIN_REALM=dms
@@ -100,7 +100,7 @@ services:
     build:
       context: ../../ocr-worker
     environment:
-      - MONGODB_URI=mongodb://${MONGO_APP_USER}:${MONGO_APP_PASSWORD}@mongodb:27017/dms?authSource=dms
+      - MONGODB_URI=mongodb://${MONGO_APP_USER:-dms_app}:${MONGO_APP_PASSWORD:-change-me-app}@mongodb:27017/dms?authSource=dms
       - OCR_POLL_INTERVAL_MS=5000
     depends_on:
       mongodb:
