@@ -134,13 +134,28 @@ class SearchApiIntegrationTest {
     }
 
     @Test
-    void notYetIndexedDocumentsDoNotAppear() throws Exception {
+    void notYetIndexedDocumentsAreStillFindableByTitle() throws Exception {
+        // A document awaiting OCR (indexing_status = pending) must still be findable
+        // by its title/metadata — only its extracted content isn't searchable yet.
         String keyword = uniqueKeyword();
-        insertDoc(titleWith(keyword), "contributor", List.of(), List.of(), "pending", "active");
+        String id = insertDoc(titleWith(keyword), "contributor", List.of(), List.of(), "pending", "active");
 
         JsonNode results = search(ADMIN, keyword, "");
 
-        assertThat(idsOf(results)).isEmpty();
+        assertThat(idsOf(results)).contains(id);
+    }
+
+    @Test
+    void findsDocumentByPartialTitleFragment() throws Exception {
+        // Substring matching: typing part of the title (not a whole word) finds it.
+        String keyword = uniqueKeyword();
+        String id = insertDoc(titleWith(keyword), "contributor", List.of(), List.of(), "indexed", "active");
+
+        // Search a middle fragment of the unique keyword — $text could never match this.
+        String fragment = keyword.substring(3, 12);
+        JsonNode results = search(CONTRIBUTOR, fragment, "");
+
+        assertThat(idsOf(results)).contains(id);
     }
 
     // ---- acceptance: payload safety ---------------------------------------

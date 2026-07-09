@@ -9,7 +9,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -17,19 +16,20 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * Full-text document search with RBAC enforced at query time.
+ * Document search with RBAC enforced at query time.
  *
- * <p>Every query combines, in a single MongoDB request (never post-filtered):
- * the {@code $text} match against the documents text index (title, description,
- * ocr_text), an active + indexed status gate, and a mandatory per-user
- * permission predicate built from the caller's token. Results are mapped to
+ * <p>Every query combines, in a single MongoDB request (never post-filtered): a
+ * case-insensitive substring match across the document's title, EAP number,
+ * description, and extracted OCR text; an active-status gate; and a mandatory
+ * per-user permission predicate built from the caller's token. Substring
+ * matching (rather than {@code $text}) means partial titles are found and search
+ * does not depend on the presence of the text index. Results are mapped to
  * {@link SearchResultEntry}, so ACL fields and raw OCR text never reach the client.
  */
 @Service
 @Profile("!no-mongo")
 public class SearchService {
 
-    static final String INDEXED = "indexed";
     static final int DEFAULT_LIMIT = 20;
     static final int MAX_LIMIT = 100;
 
@@ -49,10 +49,10 @@ public class SearchService {
 
     /**
      * Paginated, filtered, sorted document search with RBAC enforced at query
-     * time. The full-text match, the active+indexed gate, the mandatory per-user
-     * permission predicate, and every optional filter are combined into a single
-     * MongoDB query — results are never post-filtered, so pagination totals stay
-     * correct and restricted documents never leak.
+     * time. The substring term match, the active-status gate, the mandatory
+     * per-user permission predicate, and every optional filter are combined into
+     * a single MongoDB query — results are never post-filtered, so pagination
+     * totals stay correct and restricted documents never leak.
      */
     public SearchResponse query(SearchCriteria criteria, CurrentUser user) {
         int limit = Math.min(Math.max(criteria.limit(), 1), MAX_LIMIT);
@@ -64,24 +64,33 @@ public class SearchService {
             return new SearchResponse(List.of(), page, limit, 0, 0, false);
         }
 
-        Query query = new Query();
-        if (hasTerm) {
-            // Full-text match against the documents text index (title, description, ocr_text).
-            query.addCriteria(TextCriteria.forDefaultLanguage().matching(criteria.term().trim()));
-        }
-        // Only active, fully-indexed documents are searchable.
-        query.addCriteria(Criteria.where("document_status").is(DocumentService.STATUS_ACTIVE));
-        query.addCriteria(Criteria.where("indexing_status").is(INDEXED));
+        List<Criteria> and = new ArrayList<>();
+        // Only active documents are searchable (deleted ones never surface).
+        and.add(Criteria.where("document_status").is(DocumentService.STATUS_ACTIVE));
         // Mandatory RBAC predicate, applied in the same query — never post-filtered.
         Criteria permission = permissionFilter(user);
         if (permission != null) {
-            query.addCriteria(permission);
+            and.add(permission);
+        }
+        if (hasTerm) {
+            // Case-insensitive substring match across metadata and extracted text, so
+            // partial titles ("Fin" → "Finance"), EAP numbers, and OCR content all hit.
+            // Independent of the $text index, so a missing index can't silently break
+            // search, and documents are findable by title even before OCR completes.
+            String pattern = escapeRegex(criteria.term().trim());
+            and.add(
+                    new Criteria()
+                            .orOperator(
+                                    Criteria.where("title").regex(pattern, "i"),
+                                    Criteria.where("eap_number").regex(pattern, "i"),
+                                    Criteria.where("description").regex(pattern, "i"),
+                                    Criteria.where("ocr_text").regex(pattern, "i")));
         }
         // Optional facet filters.
-        addEquals(query, "document_type", criteria.documentType());
-        addEquals(query, "organizational_unit", criteria.department());
-        addEquals(query, "folder_id", criteria.folderId());
-        addEquals(query, "ocr_status", criteria.ocrStatus());
+        addEquals(and, "document_type", criteria.documentType());
+        addEquals(and, "organizational_unit", criteria.department());
+        addEquals(and, "folder_id", criteria.folderId());
+        addEquals(and, "ocr_status", criteria.ocrStatus());
         if (criteria.dateFrom() != null || criteria.dateTo() != null) {
             Criteria date = Criteria.where("upload_date");
             if (criteria.dateFrom() != null) {
@@ -90,8 +99,12 @@ public class SearchService {
             if (criteria.dateTo() != null) {
                 date = date.lte(criteria.dateTo());
             }
-            query.addCriteria(date);
+            and.add(date);
         }
+
+        // A single top-level $and avoids key collisions between the permission $or
+        // and the term $or.
+        Query query = new Query(new Criteria().andOperator(and.toArray(new Criteria[0])));
 
         long total = mongoTemplate.count(query, DocumentRecord.class);
 
@@ -115,14 +128,19 @@ public class SearchService {
                 || c.dateTo() != null;
     }
 
-    private static void addEquals(Query query, String field, String value) {
+    private static void addEquals(List<Criteria> and, String field, String value) {
         if (notBlank(value)) {
-            query.addCriteria(Criteria.where(field).is(value.trim()));
+            and.add(Criteria.where(field).is(value.trim()));
         }
     }
 
     private static boolean notBlank(String value) {
         return value != null && !value.isBlank();
+    }
+
+    /** Escapes regex metacharacters so a user's term is matched literally. */
+    private static String escapeRegex(String term) {
+        return term.replaceAll("[.*+?^${}()|\\[\\]\\\\]", "\\\\$0");
     }
 
     private static Sort sortFor(String sort) {

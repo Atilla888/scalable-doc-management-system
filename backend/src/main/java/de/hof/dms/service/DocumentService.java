@@ -38,6 +38,7 @@ public class DocumentService {
     public static final String OCR_NOT_REQUIRED = "not_required";
     public static final String OCR_PENDING = "pending";
     public static final String INDEXING_PENDING = "pending";
+    public static final String INDEXING_INDEXED = "indexed";
     public static final String UPLOAD_STATUS = "UPLOADED";
 
     private final DocumentRepository documentRepository;
@@ -115,8 +116,13 @@ public class DocumentService {
         record.setFolderId(parentId);
         record.setGridFsFileId(gridFsId.toHexString());
         record.setAcl(buildDocumentAcl(user, parent, inheritFromParent));
-        record.setOcrStatus(resolveOcrStatus(contentType, documentType));
-        record.setIndexingStatus(INDEXING_PENDING);
+        String ocrStatus = resolveOcrStatus(contentType, documentType);
+        record.setOcrStatus(ocrStatus);
+        // Documents that need no OCR carry no text to extract, so they are
+        // searchable by their metadata immediately; documents awaiting OCR are
+        // marked indexed by the worker once their text is available.
+        record.setIndexingStatus(
+                OCR_NOT_REQUIRED.equals(ocrStatus) ? INDEXING_INDEXED : INDEXING_PENDING);
         record.setDocumentStatus(STATUS_ACTIVE);
 
         DocumentRecord saved = documentRepository.save(record);
