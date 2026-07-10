@@ -43,6 +43,11 @@ function highlight(text, term) {
   );
 }
 
+/**
+ * Formats an ISO date/time string for display in result cards.
+ * @param {string} [value] Date value.
+ * @returns {string} Localized date/time string, or "—" when empty.
+ */
 function formatDate(value) {
   if (!value) return "—";
   return new Intl.DateTimeFormat(undefined, {
@@ -200,6 +205,11 @@ const SearchPage = () => {
     [folders],
   );
 
+  /**
+   * Downloads a result's file, tracking the in-progress and error states.
+   * @param {Object} item Search result row with `id` and `title`.
+   * @returns {Promise<void>}
+   */
   const handleDownload = async (item) => {
     setDownloadError(null);
     setDownloadingId(item.id);

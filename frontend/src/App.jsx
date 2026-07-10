@@ -16,6 +16,11 @@ import OCRStatusPage from "./pages/OCRStatusPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./context/AuthContext";
 
+/**
+ * Summarizes a user's DMS roles as a short, comma-separated label.
+ * @param {string[]} roles All role names on the user.
+ * @returns {string} Comma-separated DMS role names, or "no DMS role".
+ */
 function formatDmsRoles(roles) {
   const dmsRoles = roles.filter((role) => role.startsWith("dms_"));
   if (dmsRoles.length === 0) return "no DMS role";

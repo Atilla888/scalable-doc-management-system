@@ -54,6 +54,13 @@ const MetadataRow = ({ label, value }) => (
   </div>
 );
 
+/**
+ * A titled card highlighting a single summary value.
+ * @param {Object} props
+ * @param {string} props.label Card label.
+ * @param {*} [props.value] Value to display; renders "—" when falsy.
+ * @returns {JSX.Element}
+ */
 const StatusCard = ({ label, value }) => (
   <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
     <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">{label}</p>
