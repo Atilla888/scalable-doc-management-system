@@ -60,7 +60,7 @@ public class SearchService {
      * Paginated, filtered, sorted document search with RBAC enforced at query
      * time. The substring term match, the active-status gate, the mandatory
      * per-user permission predicate, and every optional filter are combined into
-     * a single MongoDB query — results are never post-filtered, so pagination
+     * a single MongoDB query, results are never post-filtered, so pagination
      * totals stay correct and restricted documents never leak.
      */
     public SearchResponse query(SearchCriteria criteria, CurrentUser user) {
@@ -76,7 +76,7 @@ public class SearchService {
         List<Criteria> and = new ArrayList<>();
         // Only active documents are searchable (deleted ones never surface).
         and.add(Criteria.where("document_status").is(DocumentService.STATUS_ACTIVE));
-        // Mandatory RBAC predicate, applied in the same query — never post-filtered.
+        // Mandatory RBAC predicate, applied in the same query, never post-filtered.
         Criteria permission = permissionFilter(user);
         if (permission != null) {
             and.add(permission);
@@ -198,28 +198,77 @@ public class SearchService {
     }
 
     /**
-     * Per-user permission predicate, kept consistent with
-     * {@link PermissionService#canDocument}. Admins bypass it entirely. Every
-     * other caller matches a document when its ACL grants them directly (role,
-     * department, or ownership) <em>or</em> when the document inherits from a
-     * folder the caller is allowed to read. Returning {@code null} means "no
+     * Per-user permission predicate, kept a faithful mirror of
+     * {@link PermissionService#canDocument} for the READ action. Admins bypass it
+     * entirely. Every other caller matches a document only when the per-document
+     * resolver would also grant READ, so search never surfaces anything a direct
+     * {@code GET /api/documents/{id}} would deny. Returning {@code null} means "no
      * restriction" (admin).
+     *
+     * <p>The three grant paths mirror {@code grantsAtLevel}:
+     * <ul>
+     *   <li><b>owner</b> and <b>department manager</b>, full access regardless of
+     *       the ACL access flags;</li>
+     *   <li><b>direct ACL membership</b> (user id / role / department), only when
+     *       {@code acl.access.read == true}. Omitting this flag was a leak: a
+     *       document listing the caller's role but with read disabled is denied by
+     *       {@code canDocument} yet would otherwise appear in search;</li>
+     *   <li><b>inheritance</b>, documents that inherit from a folder the caller
+     *       may read.</li>
+     * </ul>
      */
     private Criteria permissionFilter(CurrentUser user) {
-        if (user.roles() != null && user.roles().contains(PermissionService.ROLE_ADMIN)) {
+        if (hasRole(user, PermissionService.ROLE_ADMIN)) {
             return null;
         }
 
         List<Criteria> clauses = new ArrayList<>();
-        if (user.roles() != null && !user.roles().isEmpty()) {
-            clauses.add(Criteria.where("acl.allowed_roles").in(user.roles()));
-        }
-        if (user.department() != null && !user.department().isBlank()) {
-            clauses.add(Criteria.where("acl.allowed_departments").in(List.of(user.department())));
-        }
-        if (user.username() != null && !user.username().isBlank()) {
+
+        // Owner rule, full access, independent of the access flags.
+        if (notBlank(user.username())) {
             clauses.add(Criteria.where("acl.owner").is(user.username()));
         }
+
+        // Department-manager rule, a manager may access every document of their
+        // own department, independent of the access flags. canDocument resolves
+        // the document's department as organizational_unit, falling back to
+        // acl.owner_department when organizational_unit is absent.
+        if (hasRole(user, PermissionService.ROLE_MANAGER) && notBlank(user.department())) {
+            String dept = user.department();
+            clauses.add(Criteria.where("organizational_unit").is(dept));
+            clauses.add(
+                    new Criteria()
+                            .andOperator(
+                                    Criteria.where("organizational_unit").is(null),
+                                    Criteria.where("acl.owner_department").is(dept)));
+        }
+
+        // Direct ACL membership, ONLY when the ACL actually grants READ. Without
+        // the acl.access.read gate this would leak documents canDocument denies.
+        if (notBlank(user.username())) {
+            clauses.add(
+                    new Criteria()
+                            .andOperator(
+                                    Criteria.where("acl.allowed_user_ids")
+                                            .in(List.of(user.username())),
+                                    Criteria.where("acl.access.read").is(true)));
+        }
+        if (user.roles() != null && !user.roles().isEmpty()) {
+            clauses.add(
+                    new Criteria()
+                            .andOperator(
+                                    Criteria.where("acl.allowed_roles").in(user.roles()),
+                                    Criteria.where("acl.access.read").is(true)));
+        }
+        if (notBlank(user.department())) {
+            clauses.add(
+                    new Criteria()
+                            .andOperator(
+                                    Criteria.where("acl.allowed_departments")
+                                            .in(List.of(user.department())),
+                                    Criteria.where("acl.access.read").is(true)));
+        }
+
         // Documents that inherit from a folder the user may read (mirrors the
         // folder-chain rule the per-document resolver applies).
         List<String> readableFolders = readableFolderIds(user);
@@ -236,6 +285,10 @@ public class SearchService {
             return Criteria.where("_id").is(null);
         }
         return new Criteria().orOperator(clauses.toArray(new Criteria[0]));
+    }
+
+    private static boolean hasRole(CurrentUser user, String role) {
+        return user.roles() != null && user.roles().contains(role);
     }
 
     /** Ids of every folder the user is allowed to read (for inheritance matching). */

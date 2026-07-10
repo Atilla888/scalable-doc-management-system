@@ -96,7 +96,7 @@ class SearchApiIntegrationTest {
     @Test
     void viewerFindsDocumentInheritedFromReadableFolder() throws Exception {
         // A document with no direct grant for the viewer, but inheriting from the
-        // root folder (which every role may read), must be findable by the viewer —
+        // root folder (which every role may read), must be findable by the viewer -
         // consistent with what canDocument allows when browsing.
         String rootId = folderRepository.findByPath("/").map(Folder::getId).orElseThrow();
         String keyword = uniqueKeyword();
@@ -122,6 +122,35 @@ class SearchApiIntegrationTest {
         assertThat(body).doesNotContain(keyword);
         assertThat(body).doesNotContain(id);
         assertThat(body).doesNotContain(restrictedTitle);
+    }
+
+    @Test
+    void roleGrantWithReadDisabledDoesNotLeakInSearch() throws Exception {
+        // Regression for the permission-safe-search requirement: a document whose ACL
+        // lists the caller's role but has read disabled is denied by canDocument, so it
+        // must NOT appear in search either, not even its title or a snippet.
+        String keyword = uniqueKeyword();
+        String restrictedTitle = titleWith(keyword);
+        String hiddenId = insertRoleDoc(restrictedTitle, "dms_viewer", false);
+
+        MvcResult result =
+                mockMvc.perform(get("/api/search?query=" + keyword).header(HttpHeaders.AUTHORIZATION, VIEWER))
+                        .andExpect(status().isOk())
+                        .andReturn();
+        String body = result.getResponse().getContentAsString();
+
+        assertThat(idsOf(objectMapper.readTree(body))).doesNotContain(hiddenId);
+        assertThat(body).doesNotContain(keyword);
+        assertThat(body).doesNotContain(restrictedTitle);
+
+        // But the same role grant WITH read enabled is findable, proving it's the read
+        // flag doing the filtering, not the keyword being absent.
+        String visibleId = insertRoleDoc(titleWith(keyword), "dms_viewer", true);
+        assertThat(idsOf(search(VIEWER, keyword, ""))).contains(visibleId).doesNotContain(hiddenId);
+
+        // And an admin, who bypasses the ACL, sees the restricted document, proving it
+        // really exists and was filtered by permission, not by a broken query.
+        assertThat(idsOf(search(ADMIN, keyword, ""))).contains(hiddenId);
     }
 
     @Test
@@ -151,7 +180,7 @@ class SearchApiIntegrationTest {
     @Test
     void notYetIndexedDocumentsAreStillFindableByTitle() throws Exception {
         // A document awaiting OCR (indexing_status = pending) must still be findable
-        // by its title/metadata — only its extracted content isn't searchable yet.
+        // by its title/metadata, only its extracted content isn't searchable yet.
         String keyword = uniqueKeyword();
         String id = insertDoc(titleWith(keyword), "contributor", List.of(), List.of(), "pending", "active");
 
@@ -166,7 +195,7 @@ class SearchApiIntegrationTest {
         String keyword = uniqueKeyword();
         String id = insertDoc(titleWith(keyword), "contributor", List.of(), List.of(), "indexed", "active");
 
-        // Search a middle fragment of the unique keyword — $text could never match this.
+        // Search a middle fragment of the unique keyword, $text could never match this.
         String fragment = keyword.substring(3, 12);
         JsonNode results = search(CONTRIBUTOR, fragment, "");
 
@@ -330,7 +359,44 @@ class SearchApiIntegrationTest {
         acl.setAllowedUserIds(new ArrayList<>());
         acl.setAllowedRoles(new ArrayList<>(roles));
         acl.setAllowedDepartments(new ArrayList<>(departments));
-        acl.setAccess(new FolderAccess());
+        // The role/department grants below are real READ grants, so the ACL must
+        // enable the read flag, search only surfaces a membership grant when
+        // acl.access.read is true, exactly as canDocument requires.
+        FolderAccess access = new FolderAccess();
+        access.setRead(true);
+        acl.setAccess(access);
+        acl.setInheritFromParent(false);
+        doc.setAcl(acl);
+
+        return documentRepository.save(doc).getId();
+    }
+
+    /**
+     * Inserts a document granted to a role but with an explicit read flag, used to
+     * prove permission-safe search: when read is disabled the document must not leak
+     * into search results even though the caller's role is in the ACL, mirroring
+     * canDocument, which denies READ in that state.
+     */
+    private String insertRoleDoc(String title, String role, boolean readAllowed) {
+        DocumentRecord doc = new DocumentRecord();
+        doc.setTitle(title);
+        doc.setDocumentType("report");
+        doc.setEapNumber("EAP-ROLE-" + UUID.randomUUID());
+        doc.setFolderId("test-folder-id");
+        doc.setUploadDate(Instant.now());
+        doc.setUploaderId("someone-else");
+        doc.setOcrStatus("completed");
+        doc.setIndexingStatus("indexed");
+        doc.setDocumentStatus("active");
+
+        FolderAcl acl = new FolderAcl();
+        acl.setOwner("someone-else");
+        acl.setAllowedUserIds(new ArrayList<>());
+        acl.setAllowedRoles(new ArrayList<>(List.of(role)));
+        acl.setAllowedDepartments(new ArrayList<>());
+        FolderAccess access = new FolderAccess();
+        access.setRead(readAllowed);
+        acl.setAccess(access);
         acl.setInheritFromParent(false);
         doc.setAcl(acl);
 
