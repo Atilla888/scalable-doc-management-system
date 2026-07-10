@@ -41,15 +41,16 @@ docker build "${PROXY_ARGS[@]}" -t dms-gitea:local -f "$ROOT/infra/gitea/Dockerf
 echo ">> Building dms-act-runner:local (Debian 13 Gitea Actions runner)"
 docker build "${PROXY_ARGS[@]}" -t dms-act-runner:local -f "$ROOT/infra/gitea/act-runner.Dockerfile" "$ROOT/infra/gitea"
 
-echo ">> Pulling Mongo, Keycloak, and the dind sidecar (host docker, uses the proxy)"
+echo ">> Pulling Mongo, Keycloak, the bootstrap Python, and the dind sidecar (host docker, uses the proxy)"
 docker pull mongo:7
 docker pull quay.io/keycloak/keycloak:26.2
+docker pull python:3.13-slim-trixie
 docker pull docker:27-dind
 
 echo ">> Loading everything into minikube"
 for img in dms-backend:local dms-frontend:local dms-ocr-worker:local \
            dms-gitea:local dms-act-runner:local \
-           mongo:7 quay.io/keycloak/keycloak:26.2 docker:27-dind; do
+           mongo:7 quay.io/keycloak/keycloak:26.2 python:3.13-slim-trixie docker:27-dind; do
   echo "   - $img"
   minikube image load "$img"
 done

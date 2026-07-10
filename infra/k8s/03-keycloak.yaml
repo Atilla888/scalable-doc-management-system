@@ -71,6 +71,19 @@ spec:
               value: "false"
             - name: KC_HTTP_ENABLED
               value: "true"
+            # Substituted into the ${...} placeholders of the imported realm JSON
+            # (dms-admin-api client secret and the demo users' password). Without
+            # them the placeholders would be imported as literal strings.
+            - name: DMS_KEYCLOAK_ADMIN_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: keycloak-admin-client-secret
+            - name: DMS_DEMO_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: demo-user-password
           ports:
             - containerPort: 8080
               name: http

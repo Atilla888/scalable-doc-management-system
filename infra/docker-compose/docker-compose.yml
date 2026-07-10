@@ -51,6 +51,29 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # One-shot job that runs after Keycloak is healthy and fixes what the realm
+  # import cannot express: it declares the managed `department` user-profile
+  # attribute (Keycloak >= 24 silently drops unmanaged attributes on import),
+  # re-applies department=ITDLZ to the demo users, and verifies the token
+  # mapper and service-account roles. Idempotent; the backend only starts
+  # after it exits successfully.
+  keycloak-bootstrap:
+    # Official Debian 13 (trixie) Python image, keeping the whole stack on the
+    # project's required container base.
+    image: python:3.13-slim-trixie
+    command: ["python", "/opt/dms/keycloak-bootstrap.py"]
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: dms
+      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in .env (see .env.example)}
+    volumes:
+      - ../keycloak/bootstrap/keycloak-bootstrap.py:/opt/dms/keycloak-bootstrap.py:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
+
   frontend:
     build:
       context: ../../frontend
@@ -95,6 +118,8 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
+      keycloak-bootstrap:
+        condition: service_completed_successfully
       mongodb:
         condition: service_healthy
     restart: unless-stopped

@@ -27,6 +27,8 @@ MONGO_ROOT_PW="$(gen)"
 MONGO_APP_PW="$(gen)"
 KC_ADMIN_PW="$(gen)"
 GITEA_ADMIN_PW="$(gen)"
+KC_ADMIN_CLIENT_SECRET="$(gen)"
+DEMO_USER_PW="$(gen)"
 # Shared keyfile for MongoDB replica-set internal auth. Only used by the optional
 # HA deployment (02-mongodb-replicaset.yaml); harmless for the single-node default.
 # base64, one line, <1024 chars, within MongoDB's keyfile limit.
@@ -51,6 +53,8 @@ stringData:
   mongo-app-password: "${MONGO_APP_PW}"
   keycloak-admin-username: "admin"
   keycloak-admin-password: "${KC_ADMIN_PW}"
+  keycloak-admin-client-secret: "${KC_ADMIN_CLIENT_SECRET}"
+  demo-user-password: "${DEMO_USER_PW}"
   gitea-admin-username: "dmsadmin"
   gitea-admin-password: "${GITEA_ADMIN_PW}"
   mongodb-keyfile: "${MONGO_KEYFILE}"
@@ -64,3 +68,4 @@ echo "  Keycloak admin : admin / ${KC_ADMIN_PW}"
 echo "  Gitea admin    : dmsadmin / ${GITEA_ADMIN_PW}"
 echo "  Mongo root pw  : ${MONGO_ROOT_PW}"
 echo "  Mongo app pw   : ${MONGO_APP_PW}"
+echo "  Demo login (all demo users): ${DEMO_USER_PW}"

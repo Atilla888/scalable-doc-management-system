@@ -70,7 +70,7 @@
   ],
   "users": [
     {
-      "username": "admin",
+      "username": "admin@dms.local",
       "email": "admin@dms.local",
       "firstName": "Admin",
       "lastName": "User",
@@ -82,7 +82,7 @@
       "realmRoles": ["dms_admin"]
     },
     {
-      "username": "manager",
+      "username": "manager@dms.local",
       "email": "manager@dms.local",
       "firstName": "Department",
       "lastName": "Manager",
@@ -97,7 +97,7 @@
       "realmRoles": ["dms_department_manager"]
     },
     {
-      "username": "contributor",
+      "username": "contributor@dms.local",
       "email": "contributor@dms.local",
       "firstName": "Document",
       "lastName": "Contributor",
@@ -112,7 +112,7 @@
       "realmRoles": ["dms_contributor"]
     },
     {
-      "username": "viewer",
+      "username": "viewer@dms.local",
       "email": "viewer@dms.local",
       "firstName": "Document",
       "lastName": "Viewer",
@@ -131,7 +131,7 @@
       "enabled": true,
       "serviceAccountClientId": "dms-admin-api",
       "clientRoles": {
-        "realm-management": ["query-users", "view-users", "view-realm"]
+        "realm-management": ["query-users", "view-users", "view-realm", "manage-users"]
       }
     }
   ]

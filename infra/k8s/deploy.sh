@@ -54,6 +54,11 @@ kubectl -n "$NS" create configmap keycloak-realm \
   --from-file=dms-realm.json="$ROOT/infra/keycloak/dms-realm.json" \
   --dry-run=client -o yaml | kubectl apply -f -
 
+echo ">> ConfigMap: keycloak-bootstrap (from infra/keycloak/bootstrap/keycloak-bootstrap.py)"
+kubectl -n "$NS" create configmap keycloak-bootstrap \
+  --from-file=keycloak-bootstrap.py="$ROOT/infra/keycloak/bootstrap/keycloak-bootstrap.py" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 echo ">> MongoDB + Keycloak first (everything else depends on them)"
 kubectl apply -f "$SCRIPT_DIR/02-mongodb.yaml"
 kubectl apply -f "$SCRIPT_DIR/03-keycloak.yaml"
@@ -61,6 +66,21 @@ kubectl apply -f "$SCRIPT_DIR/03-keycloak.yaml"
 echo ">> Waiting for them to be ready (up to 5 min)..."
 kubectl -n "$NS" rollout status statefulset/mongodb --timeout=300s
 kubectl -n "$NS" rollout status deployment/keycloak --timeout=300s
+
+# Keycloak bootstrap: declares the managed `department` user-profile attribute,
+# repairs the demo users' department, and verifies mapper + service-account
+# roles. Idempotent, so we simply re-run it on every deploy (Job specs are
+# immutable, hence delete-then-apply). The backend is only applied after it
+# succeeds, so it never runs against an unconfigured realm.
+echo ">> Keycloak bootstrap Job (idempotent, re-run every deploy)"
+kubectl -n "$NS" delete job keycloak-bootstrap --ignore-not-found
+kubectl apply -f "$SCRIPT_DIR/03b-keycloak-bootstrap.yaml"
+if ! kubectl -n "$NS" wait --for=condition=complete job/keycloak-bootstrap --timeout=300s; then
+  echo "ERROR: Keycloak bootstrap did not complete. Job logs:" >&2
+  kubectl -n "$NS" logs job/keycloak-bootstrap --tail=50 >&2 || true
+  exit 1
+fi
+kubectl -n "$NS" logs job/keycloak-bootstrap --tail=20
 
 echo ">> Backend, frontend, OCR worker"
 kubectl apply -f "$SCRIPT_DIR/04-backend.yaml"

@@ -1,0 +1,66 @@
+# One-shot bootstrap Job that runs after Keycloak is up and fixes what the
+# realm import cannot express: it declares the managed `department`
+# user-profile attribute (Keycloak >= 24 silently drops unmanaged attributes
+# on import), re-applies department=ITDLZ to the demo users, and verifies the
+# token mapper and the dms-admin-api service-account roles.
+#
+# The script itself is the same file Compose uses
+# (infra/keycloak/bootstrap/keycloak-bootstrap.py); deploy.sh publishes it as
+# the keycloak-bootstrap ConfigMap and re-runs this Job on every deploy — it
+# is idempotent, so re-runs are safe. deploy.sh waits for the Job to complete
+# before applying the backend, so the backend never serves traffic against an
+# unconfigured realm.
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-bootstrap
+  namespace: dms
+  labels:
+    app: keycloak-bootstrap
+spec:
+  backoffLimit: 4
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app: keycloak-bootstrap
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: keycloak-bootstrap
+          # Official Debian 13 (trixie) Python image, matching the project's
+          # container base (loaded by build-and-load.sh).
+          image: python:3.13-slim-trixie
+          imagePullPolicy: IfNotPresent
+          command: ["python", "/opt/dms/keycloak-bootstrap.py"]
+          env:
+            - name: KEYCLOAK_URL
+              value: "http://keycloak:8080"
+            - name: KEYCLOAK_REALM
+              value: "dms"
+            - name: KEYCLOAK_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: keycloak-admin-username
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: keycloak-admin-password
+          volumeMounts:
+            - name: bootstrap-script
+              mountPath: /opt/dms
+              readOnly: true
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+      volumes:
+        - name: bootstrap-script
+          configMap:
+            name: keycloak-bootstrap
