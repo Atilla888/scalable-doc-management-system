@@ -1,5 +1,6 @@
 package de.hof.dms.mongo;
 
+import de.hof.dms.domain.Department;
 import de.hof.dms.domain.Folder;
 import de.hof.dms.repository.FolderRepository;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -21,7 +22,33 @@ final class MongoInitAssertions {
 
   static void assertCollectionsExist(MongoTemplate mongoTemplate) {
     assertThat(mongoTemplate.getCollectionNames())
-        .contains("folders", "documents", "eap_sequences", "audit_logs");
+        .contains("folders", "documents", "eap_sequences", "audit_logs", "departments");
+  }
+
+  static void assertDefaultDepartmentSeeded(MongoTemplate mongoTemplate) {
+    Department itdlz =
+        mongoTemplate.findOne(
+            new Query(Criteria.where("code").is("ITDLZ")), Department.class);
+
+    assertThat(itdlz).isNotNull();
+    assertThat(itdlz.isActive()).isTrue();
+    assertThat(itdlz.getDisplayName()).isNotBlank();
+
+    long count =
+        mongoTemplate.count(new Query(Criteria.where("code").is("ITDLZ")), Department.class);
+    assertThat(count).isEqualTo(1);
+  }
+
+  static void assertDepartmentIndexes(MongoTemplate mongoTemplate) {
+    boolean uniqueCodeIndex =
+        StreamSupport.stream(
+                mongoTemplate.getDb().getCollection("departments").listIndexes().spliterator(),
+                false)
+            .anyMatch(
+                doc ->
+                    "code_1".equals(doc.getString("name"))
+                        && Boolean.TRUE.equals(doc.getBoolean("unique")));
+    assertThat(uniqueCodeIndex).as("unique index on departments.code").isTrue();
   }
 
   static void assertRootFolder(FolderRepository folderRepository) {

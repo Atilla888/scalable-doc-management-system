@@ -24,4 +24,13 @@ public interface DocumentRepository extends MongoRepository<DocumentRecord, Stri
 
     /** Fetches documents with the given OCR status, newest upload first. */
     List<DocumentRecord> findByOcrStatusOrderByUploadDateDesc(String ocrStatus);
+
+    /** Returns whether any document's ACL names the department as owner. */
+    boolean existsByAclOwnerDepartment(String department);
+
+    /** Returns whether any document's ACL lists the department as allowed. */
+    boolean existsByAclAllowedDepartments(String department);
+
+    /** Returns whether any document belongs to the given organizational unit. */
+    boolean existsByOrganizationalUnit(String organizationalUnit);
 }

@@ -18,6 +18,12 @@ data:
   SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://keycloak:8080/realms/dms/protocol/openid-connect/certs"
   # Origins the SPA is served from (kept in sync with the realm's webOrigins).
   DMS_CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://localhost:80"
+  # Keycloak Admin API access for the user directory and department assignment
+  # (client-credentials via the dms-admin-api service account; secret comes
+  # from dms-secrets below).
+  DMS_KEYCLOAK_ADMIN_BASE_URL: "http://keycloak:8080"
+  DMS_KEYCLOAK_ADMIN_REALM: "dms"
+  DMS_KEYCLOAK_ADMIN_CLIENT_ID: "dms-admin-api"
 ---
 apiVersion: v1
 kind: Service
@@ -72,6 +78,11 @@ spec:
             # K8s drops the two values above into the connection string for us.
             - name: SPRING_DATA_MONGODB_URI
               value: "mongodb://$(MONGO_APP_USER):$(MONGO_APP_PASSWORD)@mongodb:27017/dms?authSource=dms"
+            - name: DMS_KEYCLOAK_ADMIN_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: keycloak-admin-client-secret
           ports:
             - containerPort: 8081
               name: http

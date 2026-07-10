@@ -72,4 +72,14 @@ class MongoInitializationTest {
   void gridFsIsReachable() {
     MongoInitAssertions.assertGridFsReachable(mongoTemplate, gridFsTemplate);
   }
+
+  @Test
+  void defaultDepartmentIsSeededOnce() {
+    MongoInitAssertions.assertDefaultDepartmentSeeded(mongoTemplate);
+  }
+
+  @Test
+  void departmentCodeIndexIsUnique() {
+    MongoInitAssertions.assertDepartmentIndexes(mongoTemplate);
+  }
 }

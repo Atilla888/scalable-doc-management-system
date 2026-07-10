@@ -38,6 +38,10 @@ if (!db.getCollectionNames().includes("audit_logs")) {
     db.createCollection("audit_logs");
 }
 
+if (!db.getCollectionNames().includes("departments")) {
+    db.createCollection("departments");
+}
+
 db.folders.createIndex({ parent_id: 1 });
 db.folders.createIndex({ path: 1 });
 db.folders.createIndex({ name: 1 });
@@ -68,6 +72,29 @@ db.documents.createIndex({
     ocr_status: 1,
     upload_date: 1
 });
+
+// Department registry: the normalized code is unique and referenced by
+// Keycloak user attributes and folder/document ACLs. The default ITDLZ
+// department is seeded here on a fresh database; the backend seeds it again
+// idempotently at startup, so both paths converge on the same document.
+db.departments.createIndex(
+    { code: 1 },
+    { unique: true }
+);
+db.departments.updateOne(
+    { code: "ITDLZ" },
+    {
+        $setOnInsert: {
+            code: "ITDLZ",
+            display_name: "IT-Dienstleistungszentrum",
+            active: true,
+            created_at: new Date(),
+            updated_at: new Date(),
+            _class: "de.hof.dms.domain.Department"
+        }
+    },
+    { upsert: true }
+);
 
 db.folders.updateOne(
     { path: "/" },
@@ -115,4 +142,4 @@ db.folders.updateOne(
 );
 
 // GridFS (fs.files / fs.chunks) is not pre-created; MongoDB creates those collections on first GridFS write.
-print("DMS database initialized: collections, indexes, and root folder (path=/).");
+print("DMS database initialized: collections, indexes, root folder (path=/), and default department (ITDLZ).");

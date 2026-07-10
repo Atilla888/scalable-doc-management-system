@@ -23,4 +23,10 @@ public interface FolderRepository extends MongoRepository<Folder, String> {
      * materialized-path prefix.
      */
     List<Folder> findByPathStartingWith(String pathPrefix);
+
+    /** Returns whether any folder's ACL names the department as owner. */
+    boolean existsByAclOwnerDepartment(String department);
+
+    /** Returns whether any folder's ACL lists the department as allowed. */
+    boolean existsByAclAllowedDepartments(String department);
 }

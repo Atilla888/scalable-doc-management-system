@@ -2,24 +2,30 @@ package de.hof.dms.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.hof.dms.dto.AdminOverviewResponse.RoleSummary;
 import de.hof.dms.dto.AdminOverviewResponse.UserSummary;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 /**
- * Read-only gateway to the Keycloak Admin REST API. Authenticates with the
- * client-credentials grant and loads the realm's DMS users and {@code dms_}
- * roles for the administrator overview. Only DMS-scoped roles and non-service
- * accounts are surfaced.
+ * Gateway to the Keycloak Admin REST API. Authenticates with the
+ * client-credentials grant of the {@code dms-admin-api} service account, loads
+ * the realm's DMS users and {@code dms_} roles for the administrator overview,
+ * and maintains the {@code department} attribute of individual users for
+ * department assignment. Only DMS-scoped roles and non-service accounts are
+ * surfaced. The service account holds only the {@code realm-management} roles
+ * it needs (query/view users, view realm, manage users) — not realm-admin.
  */
 @Service
 public class KeycloakAdminService {
@@ -62,6 +68,84 @@ public class KeycloakAdminService {
         List<RoleSummary> roles = loadRoles(accessToken);
         List<UserSummary> users = loadUsers(accessToken);
         return new DirectorySnapshot(users, roles);
+    }
+
+    /**
+     * Sets or removes the {@code department} attribute of one Keycloak user,
+     * preserving all other attributes. Requires the {@code manage-users}
+     * realm-management role on the service account.
+     *
+     * @param userId the Keycloak user id
+     * @param departmentCode the normalized department code to set, or null to remove
+     * @return true when the user was updated, false when no such user exists
+     * @throws IllegalStateException if the admin client secret is unconfigured or
+     *     Keycloak rejects the update
+     */
+    public boolean updateUserDepartment(String userId, String departmentCode) {
+        String accessToken = requestAccessToken();
+        JsonNode user;
+        try {
+            user =
+                    getJson(
+                            baseUrl + "/admin/realms/{realm}/users/{userId}",
+                            accessToken,
+                            realm,
+                            userId);
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().value() == HttpStatus.NOT_FOUND.value()) {
+                return false;
+            }
+            throw exception;
+        }
+
+        if (!(user instanceof ObjectNode userNode)) {
+            throw new IllegalStateException("Keycloak returned an unexpected user representation");
+        }
+        ObjectNode attributes =
+                userNode.hasNonNull("attributes") && userNode.get("attributes").isObject()
+                        ? ((ObjectNode) userNode.get("attributes")).deepCopy()
+                        : objectMapper.createObjectNode();
+        if (departmentCode == null) {
+            attributes.remove("department");
+        } else {
+            attributes.putArray("department").add(departmentCode);
+        }
+
+        // Send ONLY the attributes: Keycloak treats absent fields as unchanged,
+        // while echoing the full representation has side effects — with the
+        // realm's registrationEmailAsUsername, it force-renames the username to
+        // the email address.
+        ObjectNode update = objectMapper.createObjectNode();
+        update.set("attributes", attributes);
+
+        restClient
+                .put()
+                .uri(baseUrl + "/admin/realms/{realm}/users/{userId}", realm, userId)
+                .headers(headers -> headers.setBearerAuth(accessToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(update.toString())
+                .retrieve()
+                .toBodilessEntity();
+        return true;
+    }
+
+    /**
+     * Checks whether any realm user still carries the given department attribute,
+     * which blocks deleting that department.
+     *
+     * @param departmentCode the normalized department code
+     * @return true when at least one user has the department assigned
+     */
+    public boolean hasUsersWithDepartment(String departmentCode) {
+        String accessToken = requestAccessToken();
+        JsonNode response =
+                getJson(
+                        baseUrl
+                                + "/admin/realms/{realm}/users?q={query}&max=1&briefRepresentation=true",
+                        accessToken,
+                        realm,
+                        "department:" + departmentCode);
+        return response.isArray() && !response.isEmpty();
     }
 
     /**

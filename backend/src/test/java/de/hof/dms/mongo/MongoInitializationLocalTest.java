@@ -21,7 +21,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 @DataMongoTest
 class MongoInitializationLocalTest {
 
-  private static final String LOCAL_URI = "mongodb://localhost:27017/dms";
+  // Single source of truth for the local test database (honors DMS_TEST_MONGODB_URI).
+  private static final String LOCAL_URI = LocalMongoSupport.LOCAL_URI;
 
   @DynamicPropertySource
   static void registerLocalMongo(DynamicPropertyRegistry registry) {
@@ -65,6 +66,16 @@ class MongoInitializationLocalTest {
   @Test
   void gridFsIsReachable() {
     MongoInitAssertions.assertGridFsReachable(mongoTemplate, gridFsTemplate);
+  }
+
+  @Test
+  void defaultDepartmentIsSeededOnce() {
+    MongoInitAssertions.assertDefaultDepartmentSeeded(mongoTemplate);
+  }
+
+  @Test
+  void departmentCodeIndexIsUnique() {
+    MongoInitAssertions.assertDepartmentIndexes(mongoTemplate);
   }
 
   private static boolean isLocalMongoAvailable() {
