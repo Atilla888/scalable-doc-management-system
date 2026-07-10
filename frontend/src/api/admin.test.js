@@ -107,4 +107,15 @@ describe("admin department API", () => {
       detail: "Department 'ITDLZ' cannot be deleted",
     });
   });
+
+  it("surfaces the backend detail when Keycloak refuses an assignment", async () => {
+    stubFetch(502, {
+      detail: "Keycloak refused to update the user in Keycloak [HTTP 400, error-user-attribute-required (field: email)]",
+    });
+
+    await expect(assignUserDepartment("user-1", "ITDLZ")).rejects.toMatchObject({
+      status: 502,
+      detail: expect.stringContaining("error-user-attribute-required"),
+    });
+  });
 });

@@ -1,6 +1,7 @@
 package de.hof.dms.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.hof.dms.exception.ApiException;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -10,6 +11,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.ExpectedCount.once;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
@@ -53,17 +55,7 @@ class KeycloakAdminServiceTest {
                         requestTo("http://keycloak:8080/admin/realms/dms/users/user-1"))
                 .andExpect(method(HttpMethod.GET))
                 .andExpect(header("Authorization", "Bearer admin-token"))
-                .andRespond(
-                        withSuccess(
-                                """
-                                {
-                                  "id":"user-1",
-                                  "username":"manager",
-                                  "enabled":true,
-                                  "attributes":{"locale":["de"]}
-                                }
-                                """,
-                                MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess(MANAGER_REPRESENTATION, MediaType.APPLICATION_JSON));
         server.expect(
                         once(),
                         requestTo("http://keycloak:8080/admin/realms/dms/users/user-1"))
@@ -71,15 +63,33 @@ class KeycloakAdminServiceTest {
                 .andExpect(header("Authorization", "Bearer admin-token"))
                 .andExpect(jsonPath("$.attributes.department[0]").value("ITDLZ"))
                 .andExpect(jsonPath("$.attributes.locale[0]").value("de"))
-                // Only attributes may be sent: echoing username/email back makes
-                // Keycloak rename the user when registrationEmailAsUsername is on.
-                .andExpect(jsonPath("$.username").doesNotExist())
-                .andExpect(jsonPath("$.email").doesNotExist())
+                // The FULL representation must be echoed unchanged: Keycloak
+                // validates the whole user profile against the submitted body, so
+                // omitting built-in fields fails with error-user-attribute-required,
+                // and altering them would rename or disable the user.
+                .andExpect(jsonPath("$.username").value("manager@dms.local"))
+                .andExpect(jsonPath("$.email").value("manager@dms.local"))
+                .andExpect(jsonPath("$.firstName").value("Department"))
+                .andExpect(jsonPath("$.lastName").value("Manager"))
+                .andExpect(jsonPath("$.enabled").value(true))
                 .andRespond(withStatus(HttpStatus.NO_CONTENT));
 
         assertThat(service.updateUserDepartment("user-1", "ITDLZ")).isTrue();
         server.verify();
     }
+
+    private static final String MANAGER_REPRESENTATION =
+            """
+            {
+              "id":"user-1",
+              "username":"manager@dms.local",
+              "email":"manager@dms.local",
+              "firstName":"Department",
+              "lastName":"Manager",
+              "enabled":true,
+              "attributes":{"department":["OLD"],"locale":["de"]}
+            }
+            """;
 
     @Test
     void updateUserDepartmentRemovesTheAttributeForNull() {
@@ -88,27 +98,90 @@ class KeycloakAdminServiceTest {
                         once(),
                         requestTo("http://keycloak:8080/admin/realms/dms/users/user-1"))
                 .andExpect(method(HttpMethod.GET))
-                .andRespond(
-                        withSuccess(
-                                """
-                                {
-                                  "id":"user-1",
-                                  "username":"manager",
-                                  "enabled":true,
-                                  "attributes":{"department":["ITDLZ"],"locale":["de"]}
-                                }
-                                """,
-                                MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess(MANAGER_REPRESENTATION, MediaType.APPLICATION_JSON));
         server.expect(
                         once(),
                         requestTo("http://keycloak:8080/admin/realms/dms/users/user-1"))
                 .andExpect(method(HttpMethod.PUT))
                 .andExpect(jsonPath("$.attributes.department").doesNotExist())
                 .andExpect(jsonPath("$.attributes.locale[0]").value("de"))
-                .andExpect(jsonPath("$.username").doesNotExist())
+                .andExpect(jsonPath("$.username").value("manager@dms.local"))
+                .andExpect(jsonPath("$.email").value("manager@dms.local"))
                 .andRespond(withStatus(HttpStatus.NO_CONTENT));
 
         assertThat(service.updateUserDepartment("user-1", null)).isTrue();
+        server.verify();
+    }
+
+    @Test
+    void keycloakValidationRejectionBecomesSanitizedBadGateway() {
+        createService();
+        server.expect(
+                        once(),
+                        requestTo("http://keycloak:8080/admin/realms/dms/users/user-1"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(MANAGER_REPRESENTATION, MediaType.APPLICATION_JSON));
+        server.expect(
+                        once(),
+                        requestTo("http://keycloak:8080/admin/realms/dms/users/user-1"))
+                .andExpect(method(HttpMethod.PUT))
+                .andRespond(
+                        withStatus(HttpStatus.BAD_REQUEST)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .body(
+                                        "{\"field\":\"email\",\"errorMessage\":"
+                                                + "\"error-user-attribute-required\",\"params\":[\"email\"]}"));
+
+        assertThatThrownBy(() -> service.updateUserDepartment("user-1", "ITDLZ"))
+                .isInstanceOfSatisfying(
+                        ApiException.class,
+                        ex -> assertThat(ex.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY))
+                .hasMessageContaining("error-user-attribute-required")
+                .hasMessageContaining("email")
+                .hasMessageNotContaining("Bearer")
+                .hasMessageNotContaining("admin-token");
+        server.verify();
+    }
+
+    @Test
+    void keycloakForbiddenBecomesSanitizedBadGateway() {
+        createService();
+        server.expect(
+                        once(),
+                        requestTo("http://keycloak:8080/admin/realms/dms/users/user-1"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(MANAGER_REPRESENTATION, MediaType.APPLICATION_JSON));
+        server.expect(
+                        once(),
+                        requestTo("http://keycloak:8080/admin/realms/dms/users/user-1"))
+                .andExpect(method(HttpMethod.PUT))
+                .andRespond(
+                        withStatus(HttpStatus.FORBIDDEN)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .body("{\"error\":\"unknown_error\"}"));
+
+        assertThatThrownBy(() -> service.updateUserDepartment("user-1", "ITDLZ"))
+                .isInstanceOfSatisfying(
+                        ApiException.class,
+                        ex -> assertThat(ex.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY))
+                .hasMessageContaining("HTTP 403");
+        server.verify();
+    }
+
+    @Test
+    void keycloakServerErrorOnLoadBecomesSanitizedBadGateway() {
+        createService();
+        server.expect(
+                        once(),
+                        requestTo("http://keycloak:8080/admin/realms/dms/users/user-1"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR).body("boom"));
+
+        assertThatThrownBy(() -> service.updateUserDepartment("user-1", "ITDLZ"))
+                .isInstanceOfSatisfying(
+                        ApiException.class,
+                        ex -> assertThat(ex.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY))
+                .hasMessageContaining("HTTP 500");
         server.verify();
     }
 

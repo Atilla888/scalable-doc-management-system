@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.hof.dms.dto.AdminOverviewResponse.RoleSummary;
 import de.hof.dms.dto.AdminOverviewResponse.UserSummary;
+import de.hof.dms.exception.ApiException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -72,14 +73,21 @@ public class KeycloakAdminService {
 
     /**
      * Sets or removes the {@code department} attribute of one Keycloak user,
-     * preserving all other attributes. Requires the {@code manage-users}
-     * realm-management role on the service account.
+     * preserving all other attributes and fields. Requires the
+     * {@code manage-users} realm-management role on the service account.
+     *
+     * <p>The update echoes the user's <em>full</em> fetched representation with
+     * only the department attribute modified. Keycloak validates the whole user
+     * profile against the submitted representation, so a partial body that omits
+     * built-in fields (email, first/last name) is rejected with
+     * {@code error-user-attribute-required}. Echoing the fetched values keeps
+     * username, email, names, roles, credentials, and enabled state untouched.
      *
      * @param userId the Keycloak user id
      * @param departmentCode the normalized department code to set, or null to remove
      * @return true when the user was updated, false when no such user exists
-     * @throws IllegalStateException if the admin client secret is unconfigured or
-     *     Keycloak rejects the update
+     * @throws ApiException 502 with a sanitized reason when Keycloak rejects the update
+     * @throws IllegalStateException if the admin client secret is unconfigured
      */
     public boolean updateUserDepartment(String userId, String departmentCode) {
         String accessToken = requestAccessToken();
@@ -95,7 +103,7 @@ public class KeycloakAdminService {
             if (exception.getStatusCode().value() == HttpStatus.NOT_FOUND.value()) {
                 return false;
             }
-            throw exception;
+            throw toApiException("load the user from Keycloak", exception);
         }
 
         if (!(user instanceof ObjectNode userNode)) {
@@ -103,30 +111,59 @@ public class KeycloakAdminService {
         }
         ObjectNode attributes =
                 userNode.hasNonNull("attributes") && userNode.get("attributes").isObject()
-                        ? ((ObjectNode) userNode.get("attributes")).deepCopy()
-                        : objectMapper.createObjectNode();
+                        ? (ObjectNode) userNode.get("attributes")
+                        : userNode.putObject("attributes");
         if (departmentCode == null) {
             attributes.remove("department");
         } else {
             attributes.putArray("department").add(departmentCode);
         }
 
-        // Send ONLY the attributes: Keycloak treats absent fields as unchanged,
-        // while echoing the full representation has side effects — with the
-        // realm's registrationEmailAsUsername, it force-renames the username to
-        // the email address.
-        ObjectNode update = objectMapper.createObjectNode();
-        update.set("attributes", attributes);
-
-        restClient
-                .put()
-                .uri(baseUrl + "/admin/realms/{realm}/users/{userId}", realm, userId)
-                .headers(headers -> headers.setBearerAuth(accessToken))
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(update.toString())
-                .retrieve()
-                .toBodilessEntity();
+        try {
+            restClient
+                    .put()
+                    .uri(baseUrl + "/admin/realms/{realm}/users/{userId}", realm, userId)
+                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(userNode.toString())
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException exception) {
+            throw toApiException("update the user in Keycloak", exception);
+        }
         return true;
+    }
+
+    /**
+     * Translates a Keycloak Admin API error response into a 502 {@link ApiException}
+     * whose detail names the failed operation and Keycloak's error message — but
+     * never tokens, secrets, or the raw response.
+     *
+     * @param operation short description of what was being attempted
+     * @param exception the failed Keycloak call
+     * @return the exception to throw
+     */
+    private static ApiException toApiException(
+            String operation, RestClientResponseException exception) {
+        String reason = "HTTP " + exception.getStatusCode().value();
+        try {
+            JsonNode body = new ObjectMapper().readTree(exception.getResponseBodyAsString());
+            String message =
+                    body.hasNonNull("errorMessage")
+                            ? body.get("errorMessage").asText()
+                            : body.path("error").asText();
+            if (message != null && !message.isBlank()) {
+                reason += ", " + message;
+                if (body.hasNonNull("field")) {
+                    reason += " (field: " + body.get("field").asText() + ")";
+                }
+            }
+        } catch (Exception ignored) {
+            // Non-JSON error body — the HTTP status alone is still useful.
+        }
+        return new ApiException(
+                HttpStatus.BAD_GATEWAY,
+                "Keycloak refused to " + operation + " [" + reason + "]");
     }
 
     /**

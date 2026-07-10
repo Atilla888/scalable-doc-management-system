@@ -1,5 +1,7 @@
 package de.hof.dms.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,6 +16,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /** Maps an {@link ApiException} to a problem response using its carried HTTP status. */
     @ExceptionHandler(ApiException.class)
@@ -34,9 +38,14 @@ public class GlobalExceptionHandler {
                 HttpStatus.valueOf(413), "File exceeds the configured upload limit");
     }
 
-    /** Catch-all that returns 500 for any otherwise unhandled exception. */
+    /**
+     * Catch-all that returns 500 for any otherwise unhandled exception. The full
+     * exception is logged — the sanitized response body intentionally carries no
+     * internals, so the log is the only place the root cause is visible.
+     */
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpected(Exception ex) {
+        log.error("Unhandled exception while serving a request", ex);
         return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error");
     }
 }
