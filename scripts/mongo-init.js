@@ -1,12 +1,26 @@
 db = db.getSiblingDB("dms");
 
-// Application user with readWrite on dms only — the backend and OCR worker
-// use this instead of the root account.
-db.createUser({
-    user: process.env.MONGO_APP_USER,
-    pwd: process.env.MONGO_APP_PASSWORD,
-    roles: [{ role: "readWrite", db: "dms" }]
-});
+// Application user with readWrite on dms only, the backend and OCR worker use this
+// instead of the root account. Credentials come from injected script globals when
+// present (the replica-set initiator passes them that way), otherwise from the
+// container environment (the single-node docker-entrypoint path). Creating the user
+// is idempotent so this script is safe to re-run.
+const appUser =
+    (typeof MONGO_APP_USER !== "undefined" && MONGO_APP_USER)
+        ? MONGO_APP_USER
+        : process.env.MONGO_APP_USER;
+const appPassword =
+    (typeof MONGO_APP_PASSWORD !== "undefined" && MONGO_APP_PASSWORD)
+        ? MONGO_APP_PASSWORD
+        : process.env.MONGO_APP_PASSWORD;
+
+if (appUser && db.getUser(appUser) === null) {
+    db.createUser({
+        user: appUser,
+        pwd: appPassword,
+        roles: [{ role: "readWrite", db: "dms" }]
+    });
+}
 
 if (!db.getCollectionNames().includes("folders")) {
     db.createCollection("folders");
