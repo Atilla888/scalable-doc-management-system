@@ -16,11 +16,72 @@ import OcrStatusBadge from "../components/OcrStatusBadge";
 
 const DOC_TYPES = ["report", "invoice", "contract", "scan", "letter", "other"];
 const UPLOAD_ROLES = ["dms_admin", "dms_department_manager", "dms_contributor"];
+const UPLOAD_STEPS = [
+  { key: "validate", label: "Validate access" },
+  { key: "upload", label: "Upload file" },
+  { key: "queue", label: "Queue OCR" },
+];
 
 function formatDmsRoles(roles) {
   const dmsRoles = roles.filter((role) => role.startsWith("dms_"));
   if (dmsRoles.length === 0) return "no DMS role";
   return dmsRoles.map((role) => role.replace("dms_", "")).join(", ");
+}
+
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes)) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function UploadProgress({ step }) {
+  const activeIndex = Math.max(
+    UPLOAD_STEPS.findIndex((item) => item.key === step),
+    0,
+  );
+
+  return (
+    <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="font-semibold">Uploading document…</p>
+          <p className="mt-1 text-blue-800">
+            Keep this page open while the file is sent and queued for OCR.
+          </p>
+        </div>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-blue-700">
+          Step {activeIndex + 1} of {UPLOAD_STEPS.length}
+        </span>
+      </div>
+
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-blue-100">
+        <div className="h-full w-2/3 animate-pulse rounded-full bg-blue-600" />
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {UPLOAD_STEPS.map((item, index) => {
+          const done = index < activeIndex;
+          const active = index === activeIndex;
+          return (
+            <div
+              key={item.key}
+              className={`rounded-xl border px-4 py-3 ${
+                active || done
+                  ? "border-blue-300 bg-white text-blue-900"
+                  : "border-blue-100 bg-blue-50/60 text-blue-500"
+              }`}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide">
+                {done ? "Done" : active ? "In progress" : "Waiting"}
+              </p>
+              <p className="mt-1 font-medium">{item.label}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -58,6 +119,7 @@ const UploadPage = () => {
   });
   const [file, setFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadStep, setUploadStep] = useState(null);
   const [result, setResult] = useState(null);
   const [submitError, setSubmitError] = useState(null);
 
@@ -87,8 +149,10 @@ const UploadPage = () => {
     e.preventDefault();
     setSubmitError(null);
     setResult(null);
+    setUploadStep("validate");
 
     if (!hasUploadRole) {
+      setUploadStep(null);
       setSubmitError(
         new ApiError(
           403,
@@ -99,6 +163,7 @@ const UploadPage = () => {
     }
 
     if (!file) {
+      setUploadStep(null);
       setSubmitError(new ApiError(400, "Please choose a file to upload."));
       return;
     }
@@ -112,13 +177,16 @@ const UploadPage = () => {
     if (form.eapCategory) data.append("eapCategory", form.eapCategory);
 
     setSubmitting(true);
+    setUploadStep("upload");
     try {
       const response = await uploadDocument(data);
+      setUploadStep("queue");
       setResult(response);
     } catch (err) {
       setSubmitError(err);
     } finally {
       setSubmitting(false);
+      setUploadStep(null);
     }
   }
 
@@ -144,6 +212,8 @@ const UploadPage = () => {
           </p>
         </div>
       )}
+
+      {submitting && uploadStep && <UploadProgress step={uploadStep} />}
 
       {result && (
         <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-sm text-emerald-800">
@@ -182,6 +252,12 @@ const UploadPage = () => {
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="block w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
           />
+          {file && (
+            <p className="mt-2 text-xs text-text-secondary">
+              Selected: <span className="font-medium text-text">{file.name}</span> ·{" "}
+              {formatFileSize(file.size)}
+            </p>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
