@@ -1,7 +1,7 @@
 /**
  * @module pages/UploadPage
- * Document upload page: file + metadata form, parent-folder selection (root and
- * its immediate subfolders), and success/error feedback.
+ * Document upload page: batch file selection, per-file metadata, parent-folder
+ * selection, and success/error feedback.
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -35,28 +35,36 @@ function formatFileSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function UploadProgress({ step }) {
+function titleFromFile(file) {
+  return file.name.replace(/\.[^.]+$/, "") || file.name;
+}
+
+function UploadProgress({ step, currentFile, completed, total }) {
   const activeIndex = Math.max(
     UPLOAD_STEPS.findIndex((item) => item.key === step),
     0,
   );
+  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
     <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-semibold">Uploading document…</p>
+          <p className="font-semibold">Uploading documents…</p>
           <p className="mt-1 text-blue-800">
-            Keep this page open while the file is sent and queued for OCR.
+            {currentFile ? `Current file: ${currentFile}` : "Preparing the upload queue."}
           </p>
         </div>
         <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-blue-700">
-          Step {activeIndex + 1} of {UPLOAD_STEPS.length}
+          {completed} of {total} uploaded
         </span>
       </div>
 
       <div className="mt-4 h-2 overflow-hidden rounded-full bg-blue-100">
-        <div className="h-full w-2/3 animate-pulse rounded-full bg-blue-600" />
+        <div
+          className="h-full rounded-full bg-blue-600 transition-all"
+          style={{ width: `${Math.max(percent, 8)}%` }}
+        />
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -84,6 +92,27 @@ function UploadProgress({ step }) {
   );
 }
 
+function UploadStatusBadge({ status }) {
+  const styles = {
+    ready: "border-border bg-background text-text-secondary",
+    uploading: "border-blue-200 bg-blue-50 text-blue-700",
+    uploaded: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    failed: "border-red-200 bg-red-50 text-red-700",
+  };
+  const labels = {
+    ready: "Ready",
+    uploading: "Uploading",
+    uploaded: "Uploaded",
+    failed: "Failed",
+  };
+
+  return (
+    <span className={`rounded-full border px-3 py-1 text-xs font-medium ${styles[status]}`}>
+      {labels[status] || status}
+    </span>
+  );
+}
+
 /**
  * Renders the document upload page.
  * @returns {JSX.Element}
@@ -96,7 +125,6 @@ const UploadPage = () => {
   const [searchParams] = useSearchParams();
   const presetParent = searchParams.get("parentId");
 
-  // Parent options: root folder plus its immediate subfolders.
   const { data: rootView, error: rootError, loading: rootLoading } = useApiResource(
     (signal) => getRootFolder(signal),
     [],
@@ -110,45 +138,59 @@ const UploadPage = () => {
     ];
   }, [rootView]);
 
-  const [form, setForm] = useState({
-    title: "",
-    documentType: DOC_TYPES[0],
-    parentId: "",
-    description: "",
-    eapCategory: "",
-  });
-  const [file, setFile] = useState(null);
+  const [parentId, setParentId] = useState("");
+  const [items, setItems] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [uploadStep, setUploadStep] = useState(null);
-  const [result, setResult] = useState(null);
+  const [currentUploadId, setCurrentUploadId] = useState(null);
   const [submitError, setSubmitError] = useState(null);
 
   useEffect(() => {
-    if (!form.parentId && rootView) {
-      setForm((prev) => ({ ...prev, parentId: presetParent || rootView.folder.id }));
+    if (!parentId && rootView) {
+      setParentId(presetParent || rootView.folder.id);
     }
-  }, [rootView, presetParent, form.parentId]);
+  }, [rootView, presetParent, parentId]);
 
-  /**
-   * Updates a single upload-form field.
-   * @param {string} field Field name.
-   * @param {*} value New value.
-   * @returns {void}
-   */
-  function update(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  function updateItem(id, field, value) {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+    );
+  }
+
+  function updateItemStatus(id, patch) {
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }
+
+  function removeItem(id) {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  }
+
+  function handleFilesSelected(event) {
+    const selected = Array.from(event.target.files ?? []);
+    setSubmitError(null);
+    setItems(
+      selected.map((file, index) => ({
+        id: `${file.name}-${file.size}-${file.lastModified}-${index}`,
+        file,
+        title: titleFromFile(file),
+        documentType: DOC_TYPES[0],
+        description: "",
+        eapCategory: "",
+        status: "ready",
+        result: null,
+        error: null,
+      })),
+    );
   }
 
   /**
-   * Validates the form and uploads the selected file plus metadata as multipart
-   * form data, surfacing success or error feedback.
+   * Uploads every selected file sequentially using the existing single-file API.
    * @param {React.FormEvent} e Form submit event.
    * @returns {Promise<void>}
    */
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitError(null);
-    setResult(null);
     setUploadStep("validate");
 
     if (!hasUploadRole) {
@@ -162,42 +204,74 @@ const UploadPage = () => {
       return;
     }
 
-    if (!file) {
+    if (items.length === 0) {
       setUploadStep(null);
-      setSubmitError(new ApiError(400, "Please choose a file to upload."));
+      setSubmitError(new ApiError(400, "Please choose at least one file to upload."));
       return;
     }
 
-    const data = new FormData();
-    data.append("file", file);
-    data.append("title", form.title);
-    data.append("documentType", form.documentType);
-    data.append("parentId", form.parentId);
-    if (form.description) data.append("description", form.description);
-    if (form.eapCategory) data.append("eapCategory", form.eapCategory);
+    const missingTitle = items.find((item) => !item.title.trim());
+    if (missingTitle) {
+      setUploadStep(null);
+      setSubmitError(new ApiError(400, `Please enter a title for ${missingTitle.file.name}.`));
+      return;
+    }
 
     setSubmitting(true);
-    setUploadStep("upload");
-    try {
-      const response = await uploadDocument(data);
-      setUploadStep("queue");
-      setResult(response);
-    } catch (err) {
-      setSubmitError(err);
-    } finally {
-      setSubmitting(false);
-      setUploadStep(null);
+    let failures = 0;
+
+    for (const item of items) {
+      setCurrentUploadId(item.id);
+      setUploadStep("upload");
+      updateItemStatus(item.id, { status: "uploading", error: null, result: null });
+
+      const data = new FormData();
+      data.append("file", item.file);
+      data.append("title", item.title.trim());
+      data.append("documentType", item.documentType);
+      data.append("parentId", parentId);
+      if (item.description.trim()) data.append("description", item.description.trim());
+      if (item.eapCategory.trim()) data.append("eapCategory", item.eapCategory.trim());
+
+      try {
+        const response = await uploadDocument(data);
+        setUploadStep("queue");
+        updateItemStatus(item.id, { status: "uploaded", result: response });
+      } catch (err) {
+        failures += 1;
+        updateItemStatus(item.id, { status: "failed", error: err });
+      }
+    }
+
+    setSubmitting(false);
+    setCurrentUploadId(null);
+    setUploadStep(null);
+
+    if (failures > 0) {
+      setSubmitError(
+        new ApiError(
+          400,
+          `${failures} of ${items.length} upload${items.length === 1 ? "" : "s"} failed. Check the file cards below for details.`,
+        ),
+      );
     }
   }
 
   if (rootLoading) return <LoadingState label="Loading upload form…" />;
   if (rootError) return <ApiErrorPanel error={rootError} />;
 
+  const uploadedCount = items.filter((item) => item.status === "uploaded").length;
+  const currentUpload = items.find((item) => item.id === currentUploadId);
+  const allUploaded = items.length > 0 && uploadedCount === items.length;
+
   return (
     <div className="space-y-6">
       <div>
         <p className="text-sm font-medium text-text-secondary">Upload</p>
-        <h1 className="mt-2 text-3xl font-semibold text-text">Upload a document</h1>
+        <h1 className="mt-2 text-3xl font-semibold text-text">Upload documents</h1>
+        <p className="mt-2 text-sm text-text-secondary">
+          Select one or more files, then adjust the metadata for each document before uploading.
+        </p>
       </div>
 
       {!hasUploadRole && (
@@ -213,25 +287,30 @@ const UploadPage = () => {
         </div>
       )}
 
-      {submitting && uploadStep && <UploadProgress step={uploadStep} />}
+      {submitting && uploadStep && (
+        <UploadProgress
+          step={uploadStep}
+          currentFile={currentUpload?.file.name}
+          completed={uploadedCount}
+          total={items.length}
+        />
+      )}
 
-      {result && (
+      {allUploaded && (
         <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-sm text-emerald-800">
-          <p className="font-semibold">Upload complete — status {result.status}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <span>OCR:</span>
-            <OcrStatusBadge status={result.ocrStatus} />
-            <Link to={`/documents/${result.id}`} className="text-emerald-900 underline">
-              Open document to track status
-            </Link>
-          </div>
+          <p className="font-semibold">All documents uploaded successfully.</p>
+          <p className="mt-2">OCR/indexing status can be tracked from each uploaded document.</p>
         </div>
       )}
 
       {submitError && (
         <ApiErrorPanel
           error={submitError}
-          title={submitError instanceof ApiError && submitError.isForbidden ? "Upload is not allowed for your role" : undefined}
+          title={
+            submitError instanceof ApiError && submitError.isForbidden
+              ? "Upload is not allowed for your role"
+              : undefined
+          }
           message={
             submitError instanceof ApiError && submitError.isForbidden
               ? submitError.detail ||
@@ -245,54 +324,30 @@ const UploadPage = () => {
         onSubmit={handleSubmit}
         className="grid gap-5 rounded-2xl border border-border bg-surface p-6 shadow-sm"
       >
-        <div>
-          <label className="mb-1 block text-sm font-medium text-text">File *</label>
-          <input
-            type="file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="block w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
-          />
-          {file && (
-            <p className="mt-2 text-xs text-text-secondary">
-              Selected: <span className="font-medium text-text">{file.name}</span> ·{" "}
-              {formatFileSize(file.size)}
-            </p>
-          )}
-        </div>
-
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-text">Title *</label>
+            <label className="mb-1 block text-sm font-medium text-text">Files *</label>
             <input
-              required
-              value={form.title}
-              onChange={(e) => update("title", e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
-              placeholder="Document title"
+              type="file"
+              multiple
+              onChange={handleFilesSelected}
+              disabled={submitting || !hasUploadRole}
+              className="block w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary disabled:opacity-60"
             />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-text">Document type *</label>
-            <select
-              value={form.documentType}
-              onChange={(e) => update("documentType", e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
-            >
-              {DOC_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+            <p className="mt-2 text-xs text-text-secondary">
+              {items.length === 0
+                ? "No files selected."
+                : `${items.length} file${items.length === 1 ? "" : "s"} selected.`}
+            </p>
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-text">Parent folder *</label>
             <select
-              value={form.parentId}
-              onChange={(e) => update("parentId", e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
+              value={parentId}
+              onChange={(e) => setParentId(e.target.value)}
+              disabled={submitting}
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary disabled:opacity-60"
             >
               {parentOptions.map((opt) => (
                 <option key={opt.id} value={opt.id}>
@@ -310,35 +365,128 @@ const UploadPage = () => {
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-text-secondary outline-none"
             />
           </div>
+        </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-text">EAP category (optional)</label>
-            <input
-              value={form.eapCategory}
-              onChange={(e) => update("eapCategory", e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
-              placeholder="e.g. 1001"
-            />
+        {items.length > 0 && (
+          <div className="space-y-4">
+            {items.map((item, index) => (
+              <section
+                key={item.id}
+                className="rounded-2xl border border-border bg-background p-5"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-semibold text-text">
+                        {index + 1}. {item.file.name}
+                      </h2>
+                      <UploadStatusBadge status={item.status} />
+                    </div>
+                    <p className="mt-1 text-xs text-text-secondary">
+                      {formatFileSize(item.file.size)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.id)}
+                    disabled={submitting}
+                    className="rounded-xl border border-border bg-surface px-3 py-2 text-xs font-medium text-text hover:bg-background disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-text">Title *</label>
+                    <input
+                      required
+                      value={item.title}
+                      onChange={(e) => updateItem(item.id, "title", e.target.value)}
+                      disabled={submitting}
+                      className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-primary disabled:opacity-60"
+                      placeholder="Document title"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-text">
+                      Document type *
+                    </label>
+                    <select
+                      value={item.documentType}
+                      onChange={(e) => updateItem(item.id, "documentType", e.target.value)}
+                      disabled={submitting}
+                      className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-primary disabled:opacity-60"
+                    >
+                      {DOC_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-text">
+                      EAP category (optional)
+                    </label>
+                    <input
+                      value={item.eapCategory}
+                      onChange={(e) => updateItem(item.id, "eapCategory", e.target.value)}
+                      disabled={submitting}
+                      className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-primary disabled:opacity-60"
+                      placeholder="e.g. 1001"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="mb-1 block text-sm font-medium text-text">
+                    Description (optional)
+                  </label>
+                  <textarea
+                    value={item.description}
+                    onChange={(e) => updateItem(item.id, "description", e.target.value)}
+                    disabled={submitting}
+                    className="min-h-24 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-primary disabled:opacity-60"
+                    placeholder="Notes or metadata for this file"
+                  />
+                </div>
+
+                {item.result && (
+                  <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="font-semibold">Uploaded</span>
+                      <OcrStatusBadge status={item.result.ocrStatus} />
+                      <Link to={`/documents/${item.result.id}`} className="text-emerald-900 underline">
+                        Open document
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {item.error && (
+                  <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    {item.error.detail || item.error.message || "Upload failed."}
+                  </div>
+                )}
+              </section>
+            ))}
           </div>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-text">Description (optional)</label>
-          <textarea
-            value={form.description}
-            onChange={(e) => update("description", e.target.value)}
-            className="min-h-28 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
-            placeholder="Notes or metadata"
-          />
-        </div>
+        )}
 
         <div>
           <button
             type="submit"
-            disabled={submitting || !hasUploadRole}
+            disabled={submitting || !hasUploadRole || items.length === 0}
             className="rounded-xl border border-border bg-primary px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-primary/90 disabled:opacity-60"
           >
-            {submitting ? "Uploading…" : hasUploadRole ? "Upload document" : "Upload disabled"}
+            {submitting
+              ? "Uploading queue…"
+              : hasUploadRole
+                ? `Upload ${items.length || ""} document${items.length === 1 ? "" : "s"}`
+                : "Upload disabled"}
           </button>
         </div>
       </form>
