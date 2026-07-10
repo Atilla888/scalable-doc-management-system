@@ -4,10 +4,10 @@ services:
     image: mongo:7
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-change-me-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in .env (see .env.example)}
       MONGO_INITDB_DATABASE: dms
       MONGO_APP_USER: ${MONGO_APP_USER:-dms_app}
-      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-change-me-app}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD in .env (see .env.example)}
     ports:
       # Published on 27018 by default (not 27017) so the stack coexists with a
       # MongoDB already running on the host's 27017. Containers always use 27017
@@ -29,15 +29,15 @@ services:
     command: start-dev --import-realm --health-enabled=true
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in .env (see .env.example)}
       KC_HTTP_PORT: 8080
       KC_MANAGEMENT_PORT: 9000
       KC_HOSTNAME: localhost
       KC_HOSTNAME_PORT: 8080
       KC_HOSTNAME_STRICT: false
       KC_HTTP_ENABLED: true
-      DMS_KEYCLOAK_ADMIN_CLIENT_SECRET: ${DMS_KEYCLOAK_ADMIN_CLIENT_SECRET:-dms-admin-api-dev-only}
-      DMS_DEMO_USER_PASSWORD: ${DMS_DEMO_USER_PASSWORD:-changeme_dev}
+      DMS_KEYCLOAK_ADMIN_CLIENT_SECRET: ${DMS_KEYCLOAK_ADMIN_CLIENT_SECRET:?set DMS_KEYCLOAK_ADMIN_CLIENT_SECRET in .env (see .env.example)}
+      DMS_DEMO_USER_PASSWORD: ${DMS_DEMO_USER_PASSWORD:?set DMS_DEMO_USER_PASSWORD in .env (see .env.example)}
     volumes:
       - ../keycloak/dms-realm.json:/opt/keycloak/data/import/dms-realm.json:ro
     ports:
@@ -82,12 +82,12 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://localhost:8080/realms/dms
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/dms/protocol/openid-connect/certs
-      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_APP_USER:-dms_app}:${MONGO_APP_PASSWORD:-change-me-app}@mongodb:27017/dms?authSource=dms
+      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_APP_USER:-dms_app}:${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD in .env (see .env.example)}@mongodb:27017/dms?authSource=dms
       - SERVER_PORT=8081
       - DMS_KEYCLOAK_ADMIN_BASE_URL=http://keycloak:8080
       - DMS_KEYCLOAK_ADMIN_REALM=dms
       - DMS_KEYCLOAK_ADMIN_CLIENT_ID=dms-admin-api
-      - DMS_KEYCLOAK_ADMIN_CLIENT_SECRET=${DMS_KEYCLOAK_ADMIN_CLIENT_SECRET:-dms-admin-api-dev-only}
+      - DMS_KEYCLOAK_ADMIN_CLIENT_SECRET=${DMS_KEYCLOAK_ADMIN_CLIENT_SECRET:?set DMS_KEYCLOAK_ADMIN_CLIENT_SECRET in .env (see .env.example)}
       - DMS_CORS_ALLOWED_ORIGINS=${DMS_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:80}
       - DMS_MAX_FILE_SIZE=${DMS_MAX_FILE_SIZE:-50MB}
       - DMS_MAX_REQUEST_SIZE=${DMS_MAX_REQUEST_SIZE:-55MB}
@@ -103,7 +103,7 @@ services:
     build:
       context: ../../ocr-worker
     environment:
-      - MONGODB_URI=mongodb://${MONGO_APP_USER:-dms_app}:${MONGO_APP_PASSWORD:-change-me-app}@mongodb:27017/dms?authSource=dms
+      - MONGODB_URI=mongodb://${MONGO_APP_USER:-dms_app}:${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD in .env (see .env.example)}@mongodb:27017/dms?authSource=dms
       - OCR_POLL_INTERVAL_MS=5000
     depends_on:
       mongodb:
