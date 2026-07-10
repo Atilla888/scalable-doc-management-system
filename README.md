@@ -25,6 +25,10 @@ developer machine.
 
 ## Installation — development (Docker Compose)
 
+**Prerequisites:** Docker with Docker Compose v2 (check with `docker compose version`), and these
+host ports free: **5173** (frontend), **8080** and **9000** (Keycloak), **8081** (backend), and
+**27018** (MongoDB).
+
 The stack has **no fallback passwords**: it refuses to start until every required secret is set.
 First-time setup:
 
@@ -33,8 +37,15 @@ cd infra/docker-compose
 cp .env.example .env
 ```
 
-Open `.env` and fill in the five required secrets (blank by default) with strong values —
-for example `openssl rand -hex 24`:
+Open `.env` and fill in the five required secrets (blank by default). Any strong value works;
+generate them with (run once per secret and paste each value into `.env`; if `openssl` is
+unavailable, any long random string will do):
+
+```bash
+openssl rand -hex 24
+```
+
+Set these five keys:
 
 - `KEYCLOAK_ADMIN_PASSWORD`
 - `MONGO_ROOT_PASSWORD`
