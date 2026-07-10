@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { searchDocuments } from "../api/search";
 import { getFolderTree } from "../api/folders";
+import { downloadDocument } from "../api/documents";
 import OcrStatusBadge from "../components/OcrStatusBadge";
 import ApiErrorPanel from "../components/ApiErrorPanel";
 import LoadingState from "../components/LoadingState";
@@ -40,6 +41,17 @@ function highlight(text, term) {
       part
     ),
   );
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 const emptyForm = {
@@ -80,6 +92,8 @@ const SearchPage = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [folders, setFolders] = useState([]);
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [downloadError, setDownloadError] = useState(null);
 
   // Keep the controlled inputs in sync when the URL changes (e.g. back button).
   useEffect(() => setForm(params), [params]);
@@ -176,6 +190,27 @@ const SearchPage = () => {
    * @returns {(event: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) => void} Change handler.
    */
   const update = (field) => (event) => setForm({ ...form, [field]: event.target.value });
+
+  const folderLabelById = useMemo(
+    () =>
+      folders.reduce((acc, folder) => {
+        acc[folder.id] = folder.path === "/" ? "Root" : folder.path;
+        return acc;
+      }, {}),
+    [folders],
+  );
+
+  const handleDownload = async (item) => {
+    setDownloadError(null);
+    setDownloadingId(item.id);
+    try {
+      await downloadDocument(item.id, item.title);
+    } catch (err) {
+      setDownloadError(err);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const content = data?.content ?? [];
   const total = data?.totalElements ?? 0;
@@ -280,6 +315,16 @@ const SearchPage = () => {
 
       {loading && <LoadingState label="Searching…" />}
       {!loading && error && <ApiErrorPanel error={error} />}
+      {!loading && downloadError && (
+        <ApiErrorPanel
+          error={downloadError}
+          title="Download failed"
+          message={
+            downloadError.detail ||
+            "The selected document could not be downloaded. Check your permissions and try again."
+          }
+        />
+      )}
 
       {!loading && !error && !hasCriteria && (
         <div className="rounded-2xl border border-border bg-surface p-10 text-center text-sm text-text-secondary">
@@ -303,29 +348,66 @@ const SearchPage = () => {
             </div>
           ) : (
             <>
-              <div className="space-y-3">
+              <div className="grid gap-4">
                 {content.map((item) => (
-                  <Link
+                  <article
                     key={item.id}
-                    to={`/documents/${item.id}`}
-                    className="block rounded-2xl border border-border bg-surface p-5 shadow-sm hover:border-primary"
+                    className="rounded-2xl border border-border bg-surface p-5 shadow-sm transition hover:border-primary hover:shadow-md"
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-base font-semibold text-text">
-                          {highlight(item.title, params.query)}
-                        </h3>
-                        <p className="mt-1 text-sm text-text-secondary">
-                          {highlight(item.snippet, params.query)}
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-semibold text-text">
+                            <Link to={`/documents/${item.id}`} className="hover:text-primary">
+                              {highlight(item.title, params.query)}
+                            </Link>
+                          </h3>
+                          <OcrStatusBadge status={item.ocrStatus} />
+                        </div>
+
+                        <p className="mt-3 max-w-5xl text-sm leading-6 text-text-secondary">
+                          {highlight(item.snippet || "No preview text available.", params.query)}
                         </p>
+
+                        <div className="mt-4 flex flex-wrap gap-2 text-xs text-text-secondary">
+                          <span className="rounded-full border border-border bg-background px-3 py-1">
+                            EAP: {item.eapNumber || "—"}
+                          </span>
+                          <span className="rounded-full border border-border bg-background px-3 py-1">
+                            Type: {item.documentType || "—"}
+                          </span>
+                          <span className="rounded-full border border-border bg-background px-3 py-1">
+                            Updated: {formatDate(item.updatedAt)}
+                          </span>
+                          {item.parentFolderId && (
+                            <Link
+                              to={`/folders/${item.parentFolderId}`}
+                              className="rounded-full border border-border bg-background px-3 py-1 hover:border-primary hover:text-primary"
+                            >
+                              Folder: {folderLabelById[item.parentFolderId] || "Open folder"}
+                            </Link>
+                          )}
+                        </div>
                       </div>
-                      <OcrStatusBadge status={item.ocrStatus} />
+
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        <Link
+                          to={`/documents/${item.id}`}
+                          className="rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium text-text hover:bg-surface"
+                        >
+                          Open
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(item)}
+                          disabled={downloadingId === item.id}
+                          className="rounded-xl border border-border bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary/90 disabled:opacity-60"
+                        >
+                          {downloadingId === item.id ? "Downloading…" : "Download"}
+                        </button>
+                      </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-4 text-xs text-text-secondary">
-                      <span>EAP: {item.eapNumber}</span>
-                      <span>Type: {item.documentType}</span>
-                    </div>
-                  </Link>
+                  </article>
                 ))}
               </div>
 
