@@ -99,6 +99,10 @@ export function AuthProvider({ children }) {
     return () => stopTokenRefresh(refreshIntervalRef)
   }, [])
 
+  /**
+   * Logs the user out and returns to /login.
+   * @returns {void}
+   */
   function logout() {
     keycloak.logout({ redirectUri: window.location.origin + '/login' })
   }

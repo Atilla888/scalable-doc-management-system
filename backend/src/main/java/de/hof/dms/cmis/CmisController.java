@@ -150,6 +150,7 @@ public class CmisController {
         };
     }
 
+    /** Streams a document's content stream as an attachment download response. */
     private ResponseEntity<?> streamContent(String repositoryId, String objectId, CurrentUser user) {
         DocumentService.DownloadPayload payload =
                 cmisService.getContentStream(repositoryId, objectId, user);
@@ -163,10 +164,12 @@ public class CmisController {
                 .body((Resource) payload.resource());
     }
 
+    /** Returns {@code a} if it is non-null and non-blank, otherwise {@code b}. */
     private static String firstNonBlank(String a, String b) {
         return (a != null && !a.isBlank()) ? a : b;
     }
 
+    /** Reads a request parameter as an int, returning {@code 0} when absent, blank, or unparseable. */
     private static int intParam(HttpServletRequest request, String name) {
         String value = request.getParameter(name);
         if (value == null || value.isBlank()) {

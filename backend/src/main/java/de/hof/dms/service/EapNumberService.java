@@ -32,6 +32,9 @@ public class EapNumberService {
 
     private final MongoTemplate mongoTemplate;
 
+    /**
+     * Creates the service with the Mongo template backing the atomic sequence counters.
+     */
     public EapNumberService(MongoTemplate mongoTemplate) {
         this.mongoTemplate = mongoTemplate;
     }
@@ -103,6 +106,14 @@ public class EapNumberService {
         }
     }
 
+    /**
+     * Normalizes a department code to trimmed uppercase, defaulting blank values to
+     * {@code GEN}.
+     *
+     * @param department the raw department code, possibly null or blank
+     * @return the normalized department code
+     * @throws ApiException with 400 if a non-blank value is not 2-10 uppercase letters
+     */
     private String normalizeDepartment(String department) {
         if (department == null || department.isBlank()) {
             return "GEN";

@@ -44,6 +44,11 @@ public class DocumentController {
 
     private final DocumentService documentService;
 
+    /**
+     * Creates the controller with the document service it delegates to.
+     *
+     * @param documentService the service handling document operations and access checks
+     */
     public DocumentController(DocumentService documentService) {
         this.documentService = documentService;
     }

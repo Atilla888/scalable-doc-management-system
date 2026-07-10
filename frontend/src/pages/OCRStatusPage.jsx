@@ -35,6 +35,12 @@ const OCRStatusPage = () => {
     value: jobs.filter((job) => (job.ocrStatus || "").toLowerCase() === item.key).length,
   }));
 
+  /**
+   * Requeues a failed OCR job and reloads the list, tracking the retrying and
+   * error states.
+   * @param {string} id OCR job / document id to retry.
+   * @returns {Promise<void>}
+   */
   const onRetry = useCallback(
     async (id) => {
       setRetryingId(id);

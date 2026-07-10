@@ -30,6 +30,9 @@ public class OcrAdminService {
 
     private final DocumentRepository documentRepository;
 
+    /**
+     * Creates the service with the document repository backing the OCR queue.
+     */
     public OcrAdminService(DocumentRepository documentRepository) {
         this.documentRepository = documentRepository;
     }

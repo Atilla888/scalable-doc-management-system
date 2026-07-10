@@ -19,9 +19,12 @@ import java.util.Map;
  */
 public final class CmisObjects {
 
+    /** The CMIS base/object type id for documents ({@code cmis:document}). */
     public static final String TYPE_DOCUMENT = "cmis:document";
+    /** The CMIS base/object type id for folders ({@code cmis:folder}). */
     public static final String TYPE_FOLDER = "cmis:folder";
 
+    /** Prevents instantiation of this static utility holder. */
     private CmisObjects() {}
 
     /** A {@code cmis:folder} object. */
@@ -104,16 +107,19 @@ public final class CmisObjects {
         return props;
     }
 
+    /** Wraps a flat property map in the CMIS succinct-properties envelope. */
     private static Map<String, Object> succinct(Map<String, Object> props) {
         Map<String, Object> object = new LinkedHashMap<>();
         object.put("succinctProperties", props);
         return object;
     }
 
+    /** Converts an instant to epoch milliseconds, or {@code null} if the instant is {@code null}. */
     private static Long epochMillis(Instant instant) {
         return instant != null ? instant.toEpochMilli() : null;
     }
 
+    /** Returns the first element of the array, or {@code null} if it is null or empty. */
     private static String first(String[] values) {
         return values != null && values.length > 0 ? values[0] : null;
     }

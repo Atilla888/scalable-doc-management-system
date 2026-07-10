@@ -21,6 +21,11 @@ public class AdminOverviewController {
 
     private final AdminOverviewService adminOverviewService;
 
+    /**
+     * Creates the controller with the admin overview service it delegates to.
+     *
+     * @param adminOverviewService the service that produces the aggregate overview
+     */
     public AdminOverviewController(AdminOverviewService adminOverviewService) {
         this.adminOverviewService = adminOverviewService;
     }

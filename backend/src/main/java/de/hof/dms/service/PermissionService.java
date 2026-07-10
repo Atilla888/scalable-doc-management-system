@@ -45,6 +45,11 @@ public class PermissionService {
 
     private final FolderRepository folderRepository;
 
+    /**
+     * Creates the resolver with the folder repository used to walk inheritance chains.
+     *
+     * @param folderRepository source of parent folders for chain resolution
+     */
     public PermissionService(FolderRepository folderRepository) {
         this.folderRepository = folderRepository;
     }
@@ -130,6 +135,10 @@ public class PermissionService {
 
     // ---- internals --------------------------------------------------------
 
+    /**
+     * Walks the folder inheritance chain from {@code start} upward (bounded by
+     * {@link #MAX_DEPTH}), returning whether any level grants {@code action}.
+     */
     private boolean folderChainGrants(CurrentUser user, Folder start, Action action) {
         Folder current = start;
         int depth = 0;
@@ -165,6 +174,7 @@ public class PermissionService {
         return membershipMatches(user, acl) && accessAllows(acl.getAccess(), action);
     }
 
+    /** Returns whether the user matches the ACL by user id, role, or department. */
     private boolean membershipMatches(CurrentUser user, FolderAcl acl) {
         if (acl.getAllowedUserIds() != null
                 && user.username() != null
@@ -182,6 +192,7 @@ public class PermissionService {
         return false;
     }
 
+    /** Returns whether the ACL's access flags permit the requested {@code action}. */
     private boolean accessAllows(FolderAccess access, Action action) {
         if (access == null) {
             return false;
@@ -195,18 +206,22 @@ public class PermissionService {
         };
     }
 
+    /** Returns the ACL's owner department, or {@code null} if the ACL is absent. */
     private String departmentOf(FolderAcl acl) {
         return acl != null ? acl.getOwnerDepartment() : null;
     }
 
+    /** Returns whether the user holds the admin role. */
     private boolean isAdmin(CurrentUser user) {
         return hasRole(user, ROLE_ADMIN);
     }
 
+    /** Returns whether the user's token carries the given role. */
     private boolean hasRole(CurrentUser user, String role) {
         return user.roles() != null && user.roles().contains(role);
     }
 
+    /** Builds a 403 {@link ApiException} describing the denied {@code action}. */
     private ApiException forbidden(Action action) {
         return new ApiException(
                 HttpStatus.FORBIDDEN,

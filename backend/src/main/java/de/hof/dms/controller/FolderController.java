@@ -38,6 +38,11 @@ public class FolderController {
 
     private final FolderService folderService;
 
+    /**
+     * Creates the controller with the folder service it delegates to.
+     *
+     * @param folderService the service handling folder operations and access checks
+     */
     public FolderController(FolderService folderService) {
         this.folderService = folderService;
     }

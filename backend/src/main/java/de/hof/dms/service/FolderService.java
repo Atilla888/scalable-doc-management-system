@@ -44,6 +44,14 @@ public class FolderService {
     private final DocumentRepository documentRepository;
     private final PermissionService permissionService;
 
+    /**
+     * Creates the folder service with the repositories and permission resolver it
+     * uses to manage and access-check the folder tree.
+     *
+     * @param folderRepository store for folders and their materialized paths
+     * @param documentRepository store for documents, used on recursive delete
+     * @param permissionService resolver enforcing access on every operation
+     */
     public FolderService(
             FolderRepository folderRepository,
             DocumentRepository documentRepository,
@@ -285,6 +293,7 @@ public class FolderService {
         folderRepository.deleteAll(subtree);
     }
 
+    /** Returns whether the folder contains any subfolder or any active document. */
     private boolean folderHasChildren(String folderId) {
         if (!folderRepository.findByParentIdOrderByNameAsc(folderId).isEmpty()) {
             return true;
@@ -295,6 +304,7 @@ public class FolderService {
                 .isEmpty();
     }
 
+    /** Returns the folder's parent, or {@code null} if it has none or the parent is missing. */
     private Folder parentOf(Folder folder) {
         if (folder.getParentId() == null || folder.getParentId().isBlank()) {
             return null;
@@ -302,6 +312,12 @@ public class FolderService {
         return folderRepository.findById(folder.getParentId()).orElse(null);
     }
 
+    /**
+     * Resolves the target parent folder, falling back to the root folder when
+     * {@code parentId} is blank.
+     *
+     * @throws ApiException with 404 if the root or the named parent is missing
+     */
     private Folder resolveParent(String parentId) {
         if (parentId == null || parentId.isBlank()) {
             return folderRepository
@@ -342,6 +358,10 @@ public class FolderService {
         return acl;
     }
 
+    /**
+     * Builds a folder view (breadcrumb plus readable subfolders and documents)
+     * after checking read access, filtering children to what the user may read.
+     */
     private FolderViewResponse buildView(Folder folder, CurrentUser user) {
         permissionService.requireFolder(user, folder, PermissionService.Action.READ);
 
@@ -365,6 +385,7 @@ public class FolderService {
                 FolderSummary.from(folder), buildBreadcrumb(folder), subfolders, documents);
     }
 
+    /** Walks up the parent chain (bounded by {@link #MAX_BREADCRUMB_DEPTH}) to build the root-first breadcrumb trail. */
     private List<BreadcrumbEntry> buildBreadcrumb(Folder folder) {
         List<BreadcrumbEntry> trail = new ArrayList<>();
         Folder current = folder;

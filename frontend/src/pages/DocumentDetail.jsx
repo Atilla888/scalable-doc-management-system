@@ -80,6 +80,10 @@ const DocumentDetail = () => {
     return undefined;
   }, [data, reload]);
 
+  /**
+   * Downloads the document's file, tracking the in-progress and error states.
+   * @returns {Promise<void>}
+   */
   async function handleDownload() {
     setDownloadError(null);
     setDownloading(true);

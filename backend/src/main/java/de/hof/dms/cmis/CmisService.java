@@ -375,6 +375,12 @@ public class CmisService {
 
     // ---- internals --------------------------------------------------------
 
+    /**
+     * Resolves an object id to its CMIS representation as a folder (root when blank)
+     * or an active document, after checking the user's read permission.
+     *
+     * @throws CmisException if the object is missing or the user lacks read permission
+     */
     private Map<String, Object> resolveObject(String objectId, CurrentUser user) {
         Optional<Folder> folder = folderRepository.findById(folderOrRootId(objectId));
         if (folder.isPresent()) {
@@ -390,6 +396,7 @@ public class CmisService {
         return CmisObjects.document(document);
     }
 
+    /** Returns whether the folder contains any subfolder or any active document. */
     private boolean folderHasChildren(String folderId) {
         if (!folderRepository.findByParentIdOrderByNameAsc(folderId).isEmpty()) {
             return true;
@@ -400,6 +407,11 @@ public class CmisService {
                 .isEmpty();
     }
 
+    /**
+     * Resolves a folder id to its folder, treating a blank id as the root.
+     *
+     * @throws CmisException if a non-blank id does not resolve to a folder
+     */
     private Folder resolveFolder(String folderId) {
         if (folderId == null || folderId.isBlank()) {
             return root();
@@ -409,6 +421,11 @@ public class CmisService {
                 .orElseThrow(() -> new CmisException(CmisFault.OBJECT_NOT_FOUND, "Folder not found"));
     }
 
+    /**
+     * Loads a non-deleted document by object id.
+     *
+     * @throws CmisException if the id is blank, the document is missing, or it is soft-deleted
+     */
     private DocumentRecord activeDocument(String objectId) {
         DocumentRecord record =
                 documentRepository
@@ -421,6 +438,11 @@ public class CmisService {
         return record;
     }
 
+    /**
+     * Returns the repository root folder (the folder at path {@code /}).
+     *
+     * @throws CmisException if no root folder exists
+     */
     private Folder root() {
         return folderRepository
                 .findByPath(ROOT_PATH)
@@ -428,14 +450,21 @@ public class CmisService {
                         () -> new CmisException(CmisFault.OBJECT_NOT_FOUND, "Root folder not found"));
     }
 
+    /** Returns the id of the repository root folder. */
     private String rootId() {
         return root().getId();
     }
 
+    /** Returns the given object id, or the root folder id when it is null or blank. */
     private String folderOrRootId(String objectId) {
         return (objectId == null || objectId.isBlank()) ? rootId() : objectId;
     }
 
+    /**
+     * Verifies the requested repository id matches this repository.
+     *
+     * @throws CmisException if a non-null id does not match this repository's id
+     */
     private void requireRepository(String requestedRepositoryId) {
         if (requestedRepositoryId != null && !repositoryId.equals(requestedRepositoryId)) {
             throw new CmisException(
@@ -443,6 +472,11 @@ public class CmisService {
         }
     }
 
+    /**
+     * Returns the trimmed value of a required property.
+     *
+     * @throws CmisException if the property is absent or blank
+     */
     private static String required(Map<String, String> properties, String key) {
         String value = properties.get(key);
         if (value == null || value.isBlank()) {
@@ -451,6 +485,11 @@ public class CmisService {
         return value.trim();
     }
 
+    /**
+     * Returns the object id unchanged when present.
+     *
+     * @throws CmisException if the object id is null or blank
+     */
     private static String notBlank(String objectId) {
         if (objectId == null || objectId.isBlank()) {
             throw new CmisException(CmisFault.INVALID_ARGUMENT, "objectId is required");
@@ -458,6 +497,7 @@ public class CmisService {
         return objectId;
     }
 
+    /** Returns the value, or {@code null} when it is null or blank. */
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
     }

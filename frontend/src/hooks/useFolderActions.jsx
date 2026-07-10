@@ -37,18 +37,34 @@ export default function useFolderActions(reload) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
+  /**
+   * Opens the create-folder dialog for a given parent.
+   * @param {string} parentId Parent folder id under which to create.
+   * @returns {void}
+   */
   const openCreate = (parentId) => {
     setDialog({ mode: "create", parentId });
     setName("");
     setError(null);
   };
 
+  /**
+   * Opens the rename dialog, prefilling the folder's current name.
+   * @param {Object} folder Folder to rename.
+   * @returns {void}
+   */
   const openRename = (folder) => {
     setDialog({ mode: "rename", folder });
     setName(folder.name === "/" ? "" : folder.name);
     setError(null);
   };
 
+  /**
+   * Opens the move dialog and loads valid destination folders, excluding the
+   * folder itself and any folder within its own subtree.
+   * @param {Object} folder Folder to move.
+   * @returns {Promise<void>}
+   */
   const openMove = async (folder) => {
     setDialog({ mode: "move", folder });
     setDestination("");
@@ -69,10 +85,20 @@ export default function useFolderActions(reload) {
     }
   };
 
+  /**
+   * Closes the dialog unless a submit is currently in progress.
+   * @returns {void}
+   */
   const close = () => {
     if (!busy) setDialog(null);
   };
 
+  /**
+   * Handles dialog submission for create/rename/move, validating input and
+   * reloading the listing on success.
+   * @param {React.FormEvent} event Form submit event.
+   * @returns {Promise<void>}
+   */
   const submit = async (event) => {
     event.preventDefault();
     setError(null);
@@ -116,6 +142,12 @@ export default function useFolderActions(reload) {
     }
   };
 
+  /**
+   * Deletes a folder after confirmation, offering a recursive delete when the
+   * backend rejects a non-empty folder with HTTP 409.
+   * @param {Object} folder Folder to delete.
+   * @returns {Promise<void>}
+   */
   const remove = async (folder) => {
     if (!window.confirm(`Delete folder "${folder.name}"?`)) return;
     try {
@@ -138,6 +170,11 @@ export default function useFolderActions(reload) {
     }
   };
 
+  /**
+   * Display label for a destination-folder option.
+   * @param {Object} folder Folder descriptor.
+   * @returns {string} "Root (/)" for the root, otherwise the folder path.
+   */
   const labelFor = (folder) => (folder.path === "/" ? "Root (/)" : folder.path);
   const title =
     dialog?.mode === "rename"

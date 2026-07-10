@@ -9,6 +9,15 @@ import java.time.Instant;
  * fields and never the raw {@code ocr_text} (only a short snippet derived from
  * it). Built explicitly via {@link #from(DocumentRecord)} so no document field
  * can leak by accident.
+ *
+ * @param id the document's unique identifier
+ * @param title the document title
+ * @param eapNumber the document's EAP number
+ * @param documentType the document type
+ * @param snippet a short context snippet derived from the document
+ * @param parentFolderId the id of the folder containing the document
+ * @param updatedAt the instant the document was last updated
+ * @param ocrStatus the document's OCR-processing status
  */
 public record SearchResultEntry(
         String id,
@@ -23,6 +32,12 @@ public record SearchResultEntry(
     private static final int SNIPPET_MAX = 200;
     private static final int SNIPPET_LEAD = 60;
 
+    /**
+     * Builds an entry with a term-agnostic snippet.
+     *
+     * @param record the source document
+     * @return the safe search-result view
+     */
     public static SearchResultEntry from(DocumentRecord record) {
         return from(record, null);
     }
@@ -68,6 +83,7 @@ public record SearchResultEntry(
                 : trimmed.substring(0, SNIPPET_MAX).strip() + "…";
     }
 
+    /** Returns the first of the two arguments that is non-{@code null} and non-blank, or {@code null}. */
     private static String firstNonBlank(String first, String second) {
         if (first != null && !first.isBlank()) {
             return first;

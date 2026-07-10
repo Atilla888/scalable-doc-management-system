@@ -32,6 +32,11 @@ public class SearchController {
 
     private final SearchService searchService;
 
+    /**
+     * Creates the controller with the search service it delegates to.
+     *
+     * @param searchService the service that executes access-scoped searches
+     */
     public SearchController(SearchService searchService) {
         this.searchService = searchService;
     }
@@ -102,6 +107,13 @@ public class SearchController {
         return parsed == null ? null : parsed.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC);
     }
 
+    /**
+     * Parses a {@code yyyy-MM-dd} string into a {@link LocalDate}, returning null for null,
+     * blank, or unparseable input.
+     *
+     * @param date the raw date string, possibly null or blank
+     * @return the parsed date, or null when the input is absent or invalid
+     */
     private static LocalDate parseDate(String date) {
         if (date == null || date.isBlank()) {
             return null;

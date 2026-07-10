@@ -58,10 +58,22 @@ const UploadPage = () => {
     }
   }, [rootView, presetParent, form.parentId]);
 
+  /**
+   * Updates a single upload-form field.
+   * @param {string} field Field name.
+   * @param {*} value New value.
+   * @returns {void}
+   */
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  /**
+   * Validates the form and uploads the selected file plus metadata as multipart
+   * form data, surfacing success or error feedback.
+   * @param {React.FormEvent} e Form submit event.
+   * @returns {Promise<void>}
+   */
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitError(null);

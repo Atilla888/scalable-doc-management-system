@@ -19,6 +19,12 @@ public enum CmisFault {
     private final String exceptionName;
     private final HttpStatus status;
 
+    /**
+     * Binds a fault constant to its CMIS exception name and mapped HTTP status.
+     *
+     * @param exceptionName the CMIS exception name placed in the error body
+     * @param status        the HTTP status the Browser binding maps this fault to
+     */
     CmisFault(String exceptionName, HttpStatus status) {
         this.exceptionName = exceptionName;
         this.status = status;

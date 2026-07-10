@@ -10,6 +10,12 @@ import java.util.Map;
  * Immutable snapshot of the authenticated caller extracted from the OIDC access
  * token, exposing the identity and realm roles that the RBAC and service layers
  * use to make authorization decisions.
+ *
+ * @param subject the token subject (stable Keycloak user id)
+ * @param username the preferred username, or the subject when none is present
+ * @param email the caller's email address, if present in the token
+ * @param department the caller's department claim, if present
+ * @param roles the realm roles flattened from {@code realm_access}
  */
 public record CurrentUser(
         String subject,

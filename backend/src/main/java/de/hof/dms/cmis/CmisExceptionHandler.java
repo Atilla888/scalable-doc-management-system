@@ -34,6 +34,7 @@ public class CmisExceptionHandler {
         return body(translated.getFault(), translated.getMessage());
     }
 
+    /** Builds the CMIS Browser-binding JSON error response for the given fault and message. */
     private ResponseEntity<Map<String, Object>> body(CmisFault fault, String message) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("exception", fault.exceptionName());

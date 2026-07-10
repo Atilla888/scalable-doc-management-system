@@ -39,6 +39,14 @@ public class SearchService {
     private final FolderRepository folderRepository;
     private final PermissionService permissionService;
 
+    /**
+     * Creates the search service with its MongoDB template and the repositories
+     * and permission resolver needed to build the per-user RBAC predicate.
+     *
+     * @param mongoTemplate template used to run the combined search query
+     * @param folderRepository source of folders for inheritance-based access
+     * @param permissionService resolver mirrored to gate results per user
+     */
     public SearchService(
             MongoTemplate mongoTemplate,
             FolderRepository folderRepository,
@@ -128,6 +136,7 @@ public class SearchService {
         return new SearchResponse(content, page, limit, total, totalPages, hasMore);
     }
 
+    /** Returns whether any optional facet or date filter is set on the criteria. */
     private static boolean hasAnyFilter(SearchCriteria c) {
         return notBlank(c.documentType())
                 || notBlank(c.department())
@@ -137,12 +146,14 @@ public class SearchService {
                 || c.dateTo() != null;
     }
 
+    /** Adds an equality criterion on {@code field} to {@code and} when {@code value} is non-blank. */
     private static void addEquals(List<Criteria> and, String field, String value) {
         if (notBlank(value)) {
             and.add(Criteria.where(field).is(value.trim()));
         }
     }
 
+    /** Returns whether {@code value} is non-null and not blank. */
     private static boolean notBlank(String value) {
         return value != null && !value.isBlank();
     }
@@ -152,6 +163,7 @@ public class SearchService {
         return term.replaceAll("[.*+?^${}()|\\[\\]\\\\]", "\\\\$0");
     }
 
+    /** Maps a sort key to a MongoDB {@link Sort}, defaulting to newest upload first. */
     private static Sort sortFor(String sort) {
         if (sort == null) {
             return Sort.by(Sort.Direction.DESC, "upload_date");
@@ -287,6 +299,7 @@ public class SearchService {
         return new Criteria().orOperator(clauses.toArray(new Criteria[0]));
     }
 
+    /** Returns whether the user's token carries the given role. */
     private static boolean hasRole(CurrentUser user, String role) {
         return user.roles() != null && user.roles().contains(role);
     }

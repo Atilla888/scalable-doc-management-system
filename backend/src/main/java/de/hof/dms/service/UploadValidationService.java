@@ -39,6 +39,13 @@ public class UploadValidationService {
     private final Set<String> allowedContentTypes;
     private final long maxFileSize;
 
+    /**
+     * Builds the validator from configured limits: normalizes the allowed
+     * content-type allow-list and resolves the maximum file size to bytes.
+     *
+     * @param allowedContentTypes configured list of permitted MIME types
+     * @param maxFileSize configured maximum upload size
+     */
     public UploadValidationService(
             @Value("${dms.upload.allowed-content-types}") String[] allowedContentTypes,
             @Value("${spring.servlet.multipart.max-file-size}") DataSize maxFileSize) {
@@ -91,6 +98,13 @@ public class UploadValidationService {
         return new ValidatedUpload(fileName, contentType);
     }
 
+    /**
+     * Sanitizes and validates the upload's file name, rejecting path separators,
+     * null bytes, quotes, and control characters, and requiring an extension.
+     *
+     * @return the trimmed, safe file name
+     * @throws ApiException with 400/415 if the name is missing or unsafe
+     */
     private static String validateFileName(String originalFilename) {
         if (originalFilename == null || originalFilename.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "File name is required");
@@ -114,6 +128,13 @@ public class UploadValidationService {
         return fileName;
     }
 
+    /**
+     * Checks the file's leading magic bytes (or ZIP structure for DOCX) against
+     * the declared content type so the type cannot be spoofed.
+     *
+     * @return {@code true} if the content matches the declared type
+     * @throws ApiException with 400 if the file cannot be read
+     */
     private static boolean signatureMatches(MultipartFile file, String contentType) {
         byte[] header;
         try (var input = file.getInputStream()) {
@@ -143,6 +164,12 @@ public class UploadValidationService {
         };
     }
 
+    /**
+     * Verifies a file is a real DOCX by confirming its ZIP contains both
+     * {@code [Content_Types].xml} and {@code word/document.xml}.
+     *
+     * @return {@code true} if both required ZIP entries are present
+     */
     private static boolean isDocx(MultipartFile file) {
         boolean hasContentTypes = false;
         boolean hasDocument = false;
@@ -166,6 +193,7 @@ public class UploadValidationService {
         }
     }
 
+    /** Returns whether {@code value} begins with the given byte {@code prefix}. */
     private static boolean startsWith(byte[] value, byte[] prefix) {
         if (value.length < prefix.length) {
             return false;
@@ -178,6 +206,7 @@ public class UploadValidationService {
         return true;
     }
 
+    /** Returns whether the byte array contains no null byte (a heuristic for text content). */
     private static boolean containsNoNullByte(byte[] value) {
         for (byte item : value) {
             if (item == 0) {
@@ -187,11 +216,13 @@ public class UploadValidationService {
         return true;
     }
 
+    /** Returns the lower-cased file extension of {@code fileName}, or an empty string if none. */
     private static String extensionOf(String fileName) {
         int dot = fileName.lastIndexOf('.');
         return dot < 0 ? "" : fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
 
+    /** Normalizes a content type by stripping parameters and lower-casing the base type. */
     private static String normalizeContentType(String contentType) {
         if (contentType == null) {
             return "";
@@ -201,10 +232,16 @@ public class UploadValidationService {
         return baseType.trim().toLowerCase(Locale.ROOT);
     }
 
+    /** Returns a human-readable content type for error messages, using "missing" when blank. */
     private static String displayContentType(String contentType) {
         return contentType.isBlank() ? "missing" : contentType;
     }
 
-    /** The sanitized file name and normalized content type of a validated upload. */
+    /**
+     * The sanitized file name and normalized content type of a validated upload.
+     *
+     * @param fileName the sanitized, safe file name
+     * @param contentType the normalized, allow-listed content type
+     */
     public record ValidatedUpload(String fileName, String contentType) {}
 }

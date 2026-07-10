@@ -55,6 +55,17 @@ public class DocumentService {
     private final PermissionService permissionService;
     private final UploadValidationService uploadValidationService;
 
+    /**
+     * Creates the document service with the repositories, GridFS template, and
+     * collaborating services it needs for the document lifecycle.
+     *
+     * @param documentRepository store for document metadata records
+     * @param folderRepository store for parent folders
+     * @param gridFsTemplate template used to store and stream binary content
+     * @param eapNumberService allocator of EAP numbers on upload
+     * @param permissionService resolver enforcing access on every operation
+     * @param uploadValidationService validator applied to uploaded files
+     */
     public DocumentService(
             DocumentRepository documentRepository,
             FolderRepository folderRepository,
@@ -318,10 +329,16 @@ public class DocumentService {
         return AclDto.from(saved.getAcl());
     }
 
+    /** Returns whether the user's token carries the admin role. */
     private static boolean isAdmin(CurrentUser user) {
         return user.roles() != null && user.roles().contains(PermissionService.ROLE_ADMIN);
     }
 
+    /**
+     * Loads a document by id, treating a deleted document as absent.
+     *
+     * @throws ApiException with 404 if the document is missing or soft-deleted
+     */
     private DocumentRecord findActiveDocument(String id) {
         DocumentRecord record =
                 documentRepository
@@ -334,6 +351,11 @@ public class DocumentService {
         return record;
     }
 
+    /**
+     * Validates that the mandatory upload metadata fields are present.
+     *
+     * @throws ApiException with 400 if title, document type, or parent id is blank
+     */
     private void validateRequiredMetadata(String title, String documentType, String parentId) {
         if (title == null || title.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "title is required");
@@ -346,6 +368,12 @@ public class DocumentService {
         }
     }
 
+    /**
+     * Determines the initial OCR status for an upload: images, scans, and PDFs are
+     * marked pending, everything else needs no OCR.
+     *
+     * @return {@link #OCR_PENDING} or {@link #OCR_NOT_REQUIRED}
+     */
     static String resolveOcrStatus(String contentType, String documentType) {
         if (contentType != null && contentType.toLowerCase().startsWith("image/")) {
             return OCR_PENDING;
@@ -389,6 +417,7 @@ public class DocumentService {
         return acl;
     }
 
+    /** Builds the GridFS file metadata (uploader and title) stored alongside the blob. */
     private org.bson.Document metadataFor(CurrentUser user, String title) {
         org.bson.Document metadata = new org.bson.Document();
         metadata.put("uploader", user.username());
@@ -396,6 +425,12 @@ public class DocumentService {
         return metadata;
     }
 
-    /** Carries a downloadable document's binary resource with its content type and file name. */
+    /**
+     * Carries a downloadable document's binary resource with its content type and file name.
+     *
+     * @param resource the streamable GridFS resource holding the document's bytes
+     * @param contentType the document's stored MIME content type
+     * @param fileName the document's stored file name
+     */
     public record DownloadPayload(Resource resource, String contentType, String fileName) {}
 }

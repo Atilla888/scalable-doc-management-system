@@ -26,6 +26,11 @@ public class AdminOcrController {
 
     private final OcrAdminService ocrAdminService;
 
+    /**
+     * Creates the controller with the OCR admin service it delegates to.
+     *
+     * @param ocrAdminService the service that lists and retries OCR jobs
+     */
     public AdminOcrController(OcrAdminService ocrAdminService) {
         this.ocrAdminService = ocrAdminService;
     }

@@ -31,6 +31,10 @@ public class AdminOverviewService {
     private final FolderRepository folderRepository;
     private final MongoTemplate mongoTemplate;
 
+    /**
+     * Creates the overview service with the Keycloak directory gateway,
+     * document and folder repositories, and the Mongo template used for health probes.
+     */
     public AdminOverviewService(
             KeycloakAdminService keycloakAdminService,
             DocumentRepository documentRepository,
@@ -62,6 +66,13 @@ public class AdminOverviewService {
                 new SystemMetrics(directory.users().size(), documents, folders));
     }
 
+    /**
+     * Loads the Keycloak user/role directory, appending an UP or DOWN health entry;
+     * returns an empty snapshot if Keycloak is unavailable.
+     *
+     * @param health the running list of component health entries to append to
+     * @return the directory snapshot, or an empty one on failure
+     */
     private KeycloakAdminService.DirectorySnapshot loadDirectory(List<ComponentHealth> health) {
         try {
             KeycloakAdminService.DirectorySnapshot directory = keycloakAdminService.loadDirectory();
@@ -81,6 +92,13 @@ public class AdminOverviewService {
         }
     }
 
+    /**
+     * Pings MongoDB and counts stored documents, appending an UP or DOWN health entry;
+     * returns zero if the database is unavailable.
+     *
+     * @param health the running list of component health entries to append to
+     * @return the total document count, or zero on failure
+     */
     private long countDocuments(List<ComponentHealth> health) {
         try {
             Document result = mongoTemplate.executeCommand("{ ping: 1 }");
@@ -101,6 +119,11 @@ public class AdminOverviewService {
         }
     }
 
+    /**
+     * Counts stored folders, returning zero if the repository cannot be reached.
+     *
+     * @return the total folder count, or zero on failure
+     */
     private long countFolders() {
         try {
             return folderRepository.count();
@@ -109,6 +132,10 @@ public class AdminOverviewService {
         }
     }
 
+    /**
+     * Returns the static catalogue of permission scopes (read, create, update,
+     * delete, manage_permissions) and the roles that grant each, shown on the dashboard.
+     */
     private List<PermissionScopeSummary> permissionScopes() {
         return List.of(
                 new PermissionScopeSummary(
@@ -138,6 +165,13 @@ public class AdminOverviewService {
                         List.of("admin", "owner", "department manager", "matching ACL")));
     }
 
+    /**
+     * Returns the exception's message, or the fallback when it is null or blank.
+     *
+     * @param exception the exception whose message is preferred
+     * @param fallback the text to use when no usable message is present
+     * @return a non-blank health detail message
+     */
     private static String safeMessage(Exception exception, String fallback) {
         String message = exception.getMessage();
         return message == null || message.isBlank() ? fallback : message;

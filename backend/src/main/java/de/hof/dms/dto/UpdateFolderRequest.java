@@ -6,5 +6,8 @@ package de.hof.dms.dto;
  * <p>{@code name} renames the folder; {@code parentId} moves it under a new
  * parent. Either or both may be supplied; a {@code null}/blank field leaves
  * that aspect unchanged.
+ *
+ * @param name the new folder name, or {@code null}/blank to leave unchanged
+ * @param parentId the id of the new parent folder, or {@code null}/blank to leave unchanged
  */
 public record UpdateFolderRequest(String name, String parentId) {}

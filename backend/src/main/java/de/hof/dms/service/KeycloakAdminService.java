@@ -31,6 +31,10 @@ public class KeycloakAdminService {
     private final String clientId;
     private final String clientSecret;
 
+    /**
+     * Creates the gateway with a REST client, JSON mapper, and the Keycloak admin
+     * connection settings (base URL, realm, and client credentials) from configuration.
+     */
     public KeycloakAdminService(
             RestClient.Builder restClientBuilder,
             ObjectMapper objectMapper,
@@ -60,6 +64,12 @@ public class KeycloakAdminService {
         return new DirectorySnapshot(users, roles);
     }
 
+    /**
+     * Obtains an admin access token via the client-credentials grant.
+     *
+     * @return the bearer access token
+     * @throws IllegalStateException if the client secret is unconfigured or no token is returned
+     */
     private String requestAccessToken() {
         if (clientSecret == null || clientSecret.isBlank()) {
             throw new IllegalStateException("Keycloak admin client secret is not configured");
@@ -87,6 +97,12 @@ public class KeycloakAdminService {
         return token;
     }
 
+    /**
+     * Loads the realm roles, keeping only {@code dms_}-prefixed roles sorted by name.
+     *
+     * @param accessToken the admin bearer token
+     * @return the DMS role summaries
+     */
     private List<RoleSummary> loadRoles(String accessToken) {
         JsonNode response =
                 getJson(
@@ -108,6 +124,13 @@ public class KeycloakAdminService {
         return roles;
     }
 
+    /**
+     * Loads realm users (excluding service accounts) with their DMS realm roles,
+     * sorted case-insensitively by username.
+     *
+     * @param accessToken the admin bearer token
+     * @return the user summaries
+     */
     private List<UserSummary> loadUsers(String accessToken) {
         JsonNode response =
                 getJson(
@@ -135,6 +158,14 @@ public class KeycloakAdminService {
         return users;
     }
 
+    /**
+     * Loads a user's effective (composite) realm roles, keeping only {@code dms_}
+     * roles sorted case-insensitively.
+     *
+     * @param accessToken the admin bearer token
+     * @param userId the Keycloak user id
+     * @return the user's DMS realm role names
+     */
     private List<String> loadRealmRoles(String accessToken, String userId) {
         JsonNode response =
                 getJson(
@@ -155,6 +186,14 @@ public class KeycloakAdminService {
         return roles;
     }
 
+    /**
+     * Performs a bearer-authenticated GET and parses the JSON response body.
+     *
+     * @param uri the request URI template
+     * @param accessToken the admin bearer token
+     * @param uriVariables the values expanding the URI template
+     * @return the parsed response body
+     */
     private JsonNode getJson(String uri, String accessToken, Object... uriVariables) {
         String json =
                 restClient
@@ -166,6 +205,13 @@ public class KeycloakAdminService {
         return parseJson(json);
     }
 
+    /**
+     * Parses a JSON string into a tree.
+     *
+     * @param json the raw JSON text
+     * @return the parsed JSON tree
+     * @throws IllegalStateException if the response is not valid JSON
+     */
     private JsonNode parseJson(String json) {
         try {
             return objectMapper.readTree(json);
@@ -174,12 +220,27 @@ public class KeycloakAdminService {
         }
     }
 
+    /**
+     * Derives a display name from a user's first and last name, falling back to the
+     * username when both are blank.
+     *
+     * @param user the user JSON node
+     * @return the display name
+     */
     private static String displayName(JsonNode user) {
         String fullName =
                 (user.path("firstName").asText() + " " + user.path("lastName").asText()).trim();
         return fullName.isBlank() ? user.path("username").asText() : fullName;
     }
 
+    /**
+     * Returns the first value of a named multi-valued user attribute, or null when
+     * absent or blank.
+     *
+     * @param attributes the user's attributes node
+     * @param name the attribute name
+     * @return the first attribute value, or null
+     */
     private static String firstAttribute(JsonNode attributes, String name) {
         JsonNode values = attributes.path(name);
         return values.isArray() && !values.isEmpty()
@@ -187,16 +248,33 @@ public class KeycloakAdminService {
                 : null;
     }
 
+    /**
+     * Returns the value unchanged, or null when it is null or blank.
+     *
+     * @param value the value to check
+     * @return the value, or null when blank
+     */
     private static String nullIfBlank(String value) {
         return value == null || value.isBlank() ? null : value;
     }
 
+    /**
+     * Removes a single trailing slash from the value if present.
+     *
+     * @param value the value to normalize
+     * @return the value without a trailing slash
+     */
     private static String stripTrailingSlash(String value) {
         return value != null && value.endsWith("/")
                 ? value.substring(0, value.length() - 1)
                 : value;
     }
 
-    /** Immutable pairing of the realm's DMS users and roles returned by a directory load. */
+    /**
+     * Immutable pairing of the realm's DMS users and roles returned by a directory load.
+     *
+     * @param users the DMS user summaries
+     * @param roles the DMS role summaries
+     */
     public record DirectorySnapshot(List<UserSummary> users, List<RoleSummary> roles) {}
 }

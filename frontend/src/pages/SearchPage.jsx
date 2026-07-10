@@ -124,6 +124,12 @@ const SearchPage = () => {
     return () => controller.abort();
   }, [params, hasCriteria]);
 
+  /**
+   * Serializes filter and pagination state into the URL query string, omitting
+   * empty values and defaults.
+   * @param {Object} next Filter state, optionally including a `page`.
+   * @returns {void}
+   */
   const pushParams = (next) => {
     const sp = {};
     if (next.query?.trim()) sp.q = next.query.trim();
@@ -138,18 +144,37 @@ const SearchPage = () => {
     setSearchParams(sp);
   };
 
+  /**
+   * Submits the filter form, resetting to the first results page.
+   * @param {React.FormEvent} event Form submit event.
+   * @returns {void}
+   */
   const applyFilters = (event) => {
     event.preventDefault();
     pushParams({ ...form, page: 0 });
   };
 
+  /**
+   * Clears all filters and empties the URL query string.
+   * @returns {void}
+   */
   const resetFilters = () => {
     setForm(emptyForm);
     setSearchParams({});
   };
 
+  /**
+   * Navigates to a specific results page.
+   * @param {number} page Zero-based page index.
+   * @returns {void}
+   */
   const goToPage = (page) => pushParams({ ...params, page });
 
+  /**
+   * Builds an onChange handler that updates a single form field.
+   * @param {string} field Form field name to update.
+   * @returns {(event: React.ChangeEvent<HTMLInputElement|HTMLSelectElement>) => void} Change handler.
+   */
   const update = (field) => (event) => setForm({ ...form, [field]: event.target.value });
 
   const content = data?.content ?? [];
