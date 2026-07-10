@@ -24,6 +24,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Central Spring Security configuration for the DMS backend.
+ *
+ * <p>Configures the application as a stateless OAuth2 resource server that validates
+ * Keycloak-issued JWTs, wires CORS for the frontend, and enforces coarse-grained URL
+ * authorization: health/actuator endpoints are public, {@code /api/admin/**} requires
+ * the {@code dms_admin} realm role, and all other {@code /api/**} endpoints require an
+ * authenticated user. Method-level security is enabled for finer-grained checks.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -32,6 +41,15 @@ public class SecurityConfig {
     @Value("${dms.cors.allowed-origins:http://localhost:5173}")
     private String[] allowedOrigins;
 
+    /**
+     * Builds the application's security filter chain: stateless sessions, CORS enabled,
+     * CSRF disabled, URL-based role authorization, and JWT-based OAuth2 resource server
+     * validation using the Keycloak realm-role converter.
+     *
+     * @param http the HttpSecurity builder provided by Spring
+     * @return the configured SecurityFilterChain
+     * @throws Exception if the security configuration cannot be built
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -41,6 +59,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Health, publicly accessible for probes
                 .requestMatchers("/health", "/actuator/health", "/actuator/info").permitAll()
+                // OpenAPI spec + Swagger UI — publicly readable API documentation
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // Admin endpoints, dms_admin only
                 .requestMatchers("/api/admin/**").hasAuthority("dms_admin")
                 // All other API endpoints, any authenticated user
@@ -68,7 +88,18 @@ public class SecurityConfig {
         return converter;
     }
 
+    /**
+     * Converts the {@code realm_access.roles} array of a Keycloak JWT into Spring Security
+     * {@link GrantedAuthority} instances (one {@link SimpleGrantedAuthority} per role name).
+     */
     static class KeycloakRealmRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
+        /**
+         * Extracts realm roles from the token, returning an empty list when the
+         * {@code realm_access} claim or its {@code roles} entry is absent.
+         *
+         * @param jwt the validated Keycloak JWT
+         * @return the granted authorities derived from the token's realm roles
+         */
         @Override
         public Collection<GrantedAuthority> convert(Jwt jwt) {
             Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
@@ -85,6 +116,13 @@ public class SecurityConfig {
         }
     }
 
+    /**
+     * Defines the CORS policy applied to {@code /api/**}: origins are taken from the
+     * {@code dms.cors.allowed-origins} property, and credentialed requests using the
+     * standard REST verbs and auth/content headers are permitted.
+     *
+     * @return the CORS configuration source registered for the API paths
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
