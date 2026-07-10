@@ -878,6 +878,26 @@
               
                 
                 <li><a
+                  href='#onretry'
+                  class="">
+                  onRetry
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#opencreate'
+                  class="">
+                  openCreate
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#downloaddocument'
                   class="">
                   downloadDocument
@@ -948,6 +968,16 @@
               
                 
                 <li><a
+                  href='#openrename'
+                  class="">
+                  openRename
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#apierrorpanel'
                   class="">
                   ApiErrorPanel
@@ -1008,6 +1038,36 @@
               
                 
                 <li><a
+                  href='#update'
+                  class="">
+                  update
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#update'
+                  class="">
+                  update
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#openmove'
+                  class="">
+                  openMove
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#documentspage'
                   class="">
                   DocumentsPage
@@ -1028,6 +1088,16 @@
               
                 
                 <li><a
+                  href='#handlesubmit'
+                  class="">
+                  handleSubmit
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#request'
                   class="">
                   request
@@ -1038,9 +1108,109 @@
               
                 
                 <li><a
+                  href='#handledownload'
+                  class="">
+                  handleDownload
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#close'
+                  class="">
+                  close
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#submit'
+                  class="">
+                  submit
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#logout'
+                  class="">
+                  logout
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#useauth'
                   class="">
                   useAuth
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#pushparams'
+                  class="">
+                  pushParams
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#remove'
+                  class="">
+                  remove
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#applyfilters'
+                  class="">
+                  applyFilters
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#resetfilters'
+                  class="">
+                  resetFilters
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#gotopage'
+                  class="">
+                  goToPage
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#labelfor'
+                  class="">
+                  labelFor
                   
                 </a>
                 
@@ -6548,6 +6718,149 @@ Refreshes the token if it expires within 30s; clears the session on failure.</p>
   
   <div class='clearfix'>
     
+    <h3 class='fl m0' id='onretry'>
+      onRetry
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Requeues a failed OCR job and reloads the list, tracking the retrying and
+error states.</p>
+
+    <div class='pre p1 fill-light mt0'>onRetry</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    OCR job / document id to retry.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='opencreate'>
+      openCreate
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Opens the create-folder dialog for a given parent.</p>
+
+    <div class='pre p1 fill-light mt0'>openCreate</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>parentId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    Parent folder id under which to create.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
     <h3 class='fl m0' id='downloaddocument'>
       downloadDocument
     </h3>
@@ -7204,6 +7517,77 @@ loop, logging out and returning to /login.</p>
   
   <div class='clearfix'>
     
+    <h3 class='fl m0' id='openrename'>
+      openRename
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Opens the rename dialog, prefilling the folder's current name.</p>
+
+    <div class='pre p1 fill-light mt0'>openRename</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>folder</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    Folder to rename.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
     <h3 class='fl m0' id='apierrorpanel'>
       ApiErrorPanel
     </h3>
@@ -7665,6 +8049,222 @@ PATCH /api/folders/:id</p>
   
   <div class='clearfix'>
     
+    <h3 class='fl m0' id='update'>
+      update
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Updates a single upload-form field.</p>
+
+    <div class='pre p1 fill-light mt0'>update(field: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, value: any): void</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>field</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    Field name.
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>value</span> <code class='quiet'>(any)</code>
+	    New value.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='update'>
+      update
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Builds an onChange handler that updates a single form field.</p>
+
+    <div class='pre p1 fill-light mt0'>update</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>field</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    Form field name to update.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='openmove'>
+      openMove
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Opens the move dialog and loads valid destination folders, excluding the
+folder itself and any folder within its own subtree.</p>
+
+    <div class='pre p1 fill-light mt0'>openMove</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>folder</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    Folder to move.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
     <h3 class='fl m0' id='documentspage'>
       DocumentsPage
     </h3>
@@ -7777,6 +8377,78 @@ DELETE /api/folders/:id</p>
     
       <div class='py1 quiet mt1 prose-big'>Returns</div>
       <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;null></code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='handlesubmit'>
+      handleSubmit
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Validates the form and uploads the selected file plus metadata as multipart
+form data, surfacing success or error feedback.</p>
+
+    <div class='pre p1 fill-light mt0'>handleSubmit(e: React.FormEvent): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>e</span> <code class='quiet'>(React.FormEvent)</code>
+	    Form submit event.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></code>:
         
       
     
@@ -7951,6 +8623,249 @@ by redirecting to login. JSON-encodes the body unless it is FormData.</p>
   
   <div class='clearfix'>
     
+    <h3 class='fl m0' id='handledownload'>
+      handleDownload
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Downloads the document's file, tracking the in-progress and error states.</p>
+
+    <div class='pre p1 fill-light mt0'>handleDownload(): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='close'>
+      close
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Closes the dialog unless a submit is currently in progress.</p>
+
+    <div class='pre p1 fill-light mt0'>close</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='submit'>
+      submit
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Handles dialog submission for create/rename/move, validating input and
+reloading the listing on success.</p>
+
+    <div class='pre p1 fill-light mt0'>submit</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>event</span> <code class='quiet'>(React.FormEvent)</code>
+	    Form submit event.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='logout'>
+      logout
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Logs the user out and returns to /login.</p>
+
+    <div class='pre p1 fill-light mt0'>logout(): void</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
     <h3 class='fl m0' id='useauth'>
       useAuth
     </h3>
@@ -7998,6 +8913,423 @@ by redirecting to login. JSON-encodes the body unless it is FormData.</p>
 </li>
       
     </ul>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='pushparams'>
+      pushParams
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Serializes filter and pagination state into the URL query string, omitting
+empty values and defaults.</p>
+
+    <div class='pre p1 fill-light mt0'>pushParams</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>next</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    Filter state, optionally including a 
+<code>page</code>
+.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='remove'>
+      remove
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Deletes a folder after confirmation, offering a recursive delete when the
+backend rejects a non-empty folder with HTTP 409.</p>
+
+    <div class='pre p1 fill-light mt0'>remove</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>folder</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    Folder to delete.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a>&#x3C;void></code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='applyfilters'>
+      applyFilters
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Submits the filter form, resetting to the first results page.</p>
+
+    <div class='pre p1 fill-light mt0'>applyFilters</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>event</span> <code class='quiet'>(React.FormEvent)</code>
+	    Form submit event.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='resetfilters'>
+      resetFilters
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Clears all filters and empties the URL query string.</p>
+
+    <div class='pre p1 fill-light mt0'>resetFilters</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='gotopage'>
+      goToPage
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Navigates to a specific results page.</p>
+
+    <div class='pre p1 fill-light mt0'>goToPage</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>page</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a>)</code>
+	    Zero-based page index.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='labelfor'>
+      labelFor
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Display label for a destination-folder option.</p>
+
+    <div class='pre p1 fill-light mt0'>labelFor</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>folder</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    Folder descriptor.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>:
+        "Root (/)" for the root, otherwise the folder path.
+
+      
+    
+  
+
+  
+
   
 
   
