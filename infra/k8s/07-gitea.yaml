@@ -1,0 +1,267 @@
+# Gitea, the required in-cluster DevOps infrastructure. One deployment provides all
+# three roles the project asks for: it hosts the Git repository, runs the CI/CD
+# pipeline through Gitea Actions, and serves the built container images as an OCI
+# registry (Gitea Packages). A separate Actions runner (act_runner) with a
+# Docker-in-Docker sidecar executes the workflow in .gitea/workflows/ci.yml.
+#
+# Images: dms-gitea:local and dms-act-runner:local are built from infra/gitea/ by
+# build-and-load.sh (both Debian 13). The dind sidecar uses the official docker:dind
+# image (third-party, like mongo:7 / keycloak).
+#
+# Gitea is stateful (repos, SQLite metadata, packages), so it gets its own PVC.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitea
+  namespace: dms
+  labels:
+    app: gitea
+spec:
+  # NodePort so the web UI, API, and registry are reachable from the host, and so the
+  # cluster node can pull pushed images from <nodeIP>:30300 during a rollout.
+  type: NodePort
+  selector:
+    app: gitea
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      nodePort: 30300      # tunnel this to localhost:3000 on your laptop
+    - name: ssh
+      port: 2222
+      targetPort: 2222
+      nodePort: 30022
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitea-data
+  namespace: dms
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea
+  namespace: dms
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate          # single RWO volume, never two pods writing at once
+  selector:
+    matchLabels:
+      app: gitea
+  template:
+    metadata:
+      labels:
+        app: gitea
+    spec:
+      securityContext:
+        fsGroup: 1000         # the 'git' user (uid/gid 1000) owns the volume
+      containers:
+        - name: gitea
+          image: dms-gitea:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GITEA_DOMAIN
+              value: "localhost"
+            - name: GITEA_ROOT_URL
+              value: "http://localhost:3000/"
+            - name: GITEA_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: gitea-admin-username
+            - name: GITEA_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: gitea-admin-password
+            - name: GITEA_ADMIN_EMAIL
+              value: "admin@dms.local"
+          ports:
+            - containerPort: 3000
+              name: http
+            - containerPort: 2222
+              name: ssh
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/gitea
+          startupProbe:
+            httpGet:
+              path: /api/healthz
+              port: 3000
+            periodSeconds: 5
+            failureThreshold: 40
+          readinessProbe:
+            httpGet:
+              path: /api/healthz
+              port: 3000
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/healthz
+              port: 3000
+            periodSeconds: 20
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: gitea-data
+---
+# ServiceAccount the runner uses to roll deployments in the dms namespace. Scoped to
+# exactly what the deploy step needs, read/patch workloads, nothing cluster-wide.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gitea-deployer
+  namespace: dms
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gitea-deployer
+  namespace: dms
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gitea-deployer
+  namespace: dms
+subjects:
+  - kind: ServiceAccount
+    name: gitea-deployer
+    namespace: dms
+roleRef:
+  kind: Role
+  name: gitea-deployer
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitea-runner-data
+  namespace: dms
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea-runner
+  namespace: dms
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: gitea-runner
+  template:
+    metadata:
+      labels:
+        app: gitea-runner
+    spec:
+      serviceAccountName: gitea-deployer
+      containers:
+        # act_runner: registers once, then runs workflow steps in "host" mode.
+        - name: runner
+          image: dms-act-runner:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GITEA_INSTANCE_URL
+              value: "http://gitea:3000/"
+            - name: GITEA_RUNNER_REGISTRATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: gitea-runner-token
+            - name: RUNNER_NAME
+              value: "dms-k8s-runner"
+            - name: RUNNER_LABELS
+              value: "dms-ci:host"
+            - name: DOCKER_HOST
+              value: "tcp://localhost:2375"
+            # The node's own IP, both the NodePort registry address the runner
+            # pushes to and the address the kubelet pulls from during rollout.
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            # Registry credentials for `docker login` (reuse the Gitea admin).
+            - name: REGISTRY_USER
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: gitea-admin-username
+            - name: REGISTRY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secrets
+                  key: gitea-admin-password
+          volumeMounts:
+            - name: runner-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+        # Docker-in-Docker: the engine the runner builds images with. Isolated from
+        # the node runtime, so the same setup works on minikube and kind.
+        - name: dind
+          image: docker:27-dind
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true       # dind requires it
+          env:
+            - name: DOCKER_TLS_CERTDIR
+              value: ""            # plaintext on localhost:2375 within the pod
+          args:
+            # Allow pushing/pulling the in-cluster registry over plaintext HTTP.
+            # Covers the common minikube (192.168.49.0/24) and kind (172.18.0.0/16)
+            # node subnets; add yours here if the node IP is elsewhere.
+            - "--insecure-registry=192.168.49.0/24"
+            - "--insecure-registry=172.18.0.0/16"
+            - "--insecure-registry=10.0.0.0/8"
+          volumeMounts:
+            - name: dind-storage
+              mountPath: /var/lib/docker
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+      volumes:
+        - name: runner-data
+          persistentVolumeClaim:
+            claimName: gitea-runner-data
+        - name: dind-storage
+          emptyDir: {}

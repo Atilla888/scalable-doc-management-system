@@ -1,0 +1,113 @@
+# DMS build + rollout pipeline, run by the in-cluster Gitea Actions runner
+# (see infra/k8s/07-gitea.yaml). It proves the three roles Gitea plays in this
+# project: the repo is hosted here, this workflow automates build and rollout, and
+# the images are published to Gitea's OCI registry.
+#
+# Stages: test every component -> build the three Debian 13 images -> push them to
+# the Gitea registry -> roll the Kubernetes Deployments to the new images.
+#
+# The job runs in "host" mode on the dms-ci runner, which already carries the
+# toolchain (JDK 21, Node, Python, Docker CLI, kubectl). Image builds go to the
+# runner's Docker-in-Docker sidecar via DOCKER_HOST.
+name: DMS CI/CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-test-deploy:
+    runs-on: dms-ci
+    # The registry is ${HOST_IP}:30300, HOST_IP (the node IP) and REGISTRY_USER /
+    # REGISTRY_PASSWORD come from the runner pod's environment (07-gitea.yaml). It is
+    # both where we push (via the Gitea NodePort) and where the kubelet pulls from
+    # during rollout. REGISTRY_USER owns the packages.
+    steps:
+      - name: Checkout (from the in-cluster Gitea, no external dependency)
+        run: |
+          set -eu
+          rm -rf ./repo && mkdir repo && cd repo
+          git init -q
+          git remote add origin "http://oauth2:${GITHUB_TOKEN}@gitea:3000/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "${GITHUB_SHA}"
+          git checkout -q FETCH_HEAD
+
+      - name: Start MongoDB for the backend integration tests
+        # The runner and the dind sidecar share the pod network namespace, so a port
+        # dind publishes is reachable at localhost:27017, which is exactly where the
+        # local-Mongo integration tests (RBAC, permission-safe search) look. They only
+        # run once the DB is seeded (the tests gate on the root folder existing), so we
+        # load scripts/mongo-init.js. `docker cp` streams the file from the runner into
+        # the dind container (they don't share a filesystem, only the network).
+        run: |
+          docker rm -f dms-test-mongo >/dev/null 2>&1 || true
+          docker run -d --name dms-test-mongo -p 27017:27017 mongo:7
+          for _ in $(seq 1 30); do
+            if docker exec dms-test-mongo mongosh --quiet --eval 'db.adminCommand("ping").ok' >/dev/null 2>&1; then
+              echo "MongoDB is up"; break
+            fi
+            sleep 2
+          done
+          docker cp repo/scripts/mongo-init.js dms-test-mongo:/tmp/mongo-init.js
+          docker exec -e MONGO_APP_USER=dms_app -e MONGO_APP_PASSWORD=ci-only \
+            dms-test-mongo mongosh --quiet /tmp/mongo-init.js
+
+      - name: Backend, tests + package
+        working-directory: repo/backend
+        # The runner image ships Maven; the repo only carries the Windows wrapper.
+        run: mvn -B -ntp verify
+
+      - name: Stop the test MongoDB
+        if: always()
+        run: docker rm -f dms-test-mongo >/dev/null 2>&1 || true
+
+      - name: OCR worker, tests
+        working-directory: repo/ocr-worker
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install -q -r requirements.txt -r requirements-dev.txt
+          pytest -q
+
+      - name: Frontend, install, test, build
+        working-directory: repo/frontend
+        run: |
+          npm ci
+          npm test --if-present
+          npm run build
+
+      - name: Log in to the Gitea container registry
+        run: |
+          echo "${REGISTRY_PASSWORD}" | docker login "${HOST_IP}:30300" \
+            -u "${REGISTRY_USER}" --password-stdin
+
+      - name: Build and push images (Debian 13)
+        working-directory: repo
+        run: |
+          set -eu
+          OWNER="${REGISTRY_USER}"
+          SHA="${GITHUB_SHA}"
+          build_push() {
+            local comp="$1"; shift
+            local ref="${HOST_IP}:30300/${OWNER}/dms-${comp}"
+            docker build "$@" -t "${ref}:${SHA}" -t "${ref}:latest" "./${comp}"
+            docker push "${ref}:${SHA}"
+            docker push "${ref}:latest"
+          }
+          build_push backend    --target prod
+          build_push frontend   --target prod
+          build_push ocr-worker
+
+      - name: Roll out to Kubernetes
+        run: |
+          set -eu
+          OWNER="${REGISTRY_USER}"
+          SHA="${GITHUB_SHA}"
+          reg="${HOST_IP}:30300/${OWNER}"
+          kubectl -n dms set image deployment/backend    backend="${reg}/dms-backend:${SHA}"
+          kubectl -n dms set image deployment/frontend   frontend="${reg}/dms-frontend:${SHA}"
+          kubectl -n dms set image deployment/ocr-worker ocr-worker="${reg}/dms-ocr-worker:${SHA}"
+          kubectl -n dms rollout status deployment/backend    --timeout=240s
+          kubectl -n dms rollout status deployment/frontend   --timeout=180s
+          kubectl -n dms rollout status deployment/ocr-worker --timeout=180s
