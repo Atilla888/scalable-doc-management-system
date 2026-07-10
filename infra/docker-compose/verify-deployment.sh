@@ -12,6 +12,11 @@
 #   6. ITDLZ exists in the Mongo department registry and the admin API lists it.
 #   7. A dms_admin user can create (and clean up) a department; a viewer gets 403.
 #   8. A manager login token really carries the department=ITDLZ claim.
+#   9. A dms_admin can assign a real department to a real Keycloak user through
+#      the backend, the attribute lands in Keycloak, the username stays
+#      unchanged, the assignment can be restored to ITDLZ, and a viewer gets
+#      403 attempting the same. (Regression: a Keycloak user-profile validation
+#      rejection previously surfaced only as "Unexpected server error".)
 #
 # Tokens are obtained through the same PKCE authorization-code flow the SPA
 # uses — Direct Access Grants stay disabled. Requires: docker compose, curl,
@@ -196,6 +201,39 @@ check "non-admin gets 403 creating a department" \
   "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST \
       -H 'Authorization: Bearer $VIEWER_TOKEN' -H 'Content-Type: application/json' \
       -d '{\"code\":\"NOPE1\"}' $BACKEND_URL/api/admin/departments)\" = 403 ]"
+
+echo "== 6. Live user assignment through the backend =="
+# Assign a real temporary department to the real viewer user, confirm it in
+# Keycloak, then restore ITDLZ and delete the temporary department. Restore and
+# delete run as their own checks even when earlier assertions fail, so a broken
+# intermediate state is still cleaned up (and a failed cleanup is itself
+# reported instead of silently leaving state behind).
+ASSIGN_CODE="ASSIGN$(date +%s)"
+VIEWER_ID="$(kc_admin "/users?username=viewer%40dms.local&exact=true" | json_get 'j[0]["id"]')"
+
+check "temporary department can be created" \
+  "curl -sf -X POST -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' \
+     -d '{\"code\":\"$ASSIGN_CODE\",\"displayName\":\"Assignment probe\"}' \
+     $BACKEND_URL/api/admin/departments | json_get \"j['code']\" | grep -qx $ASSIGN_CODE"
+check "admin assigns it to viewer via the backend" \
+  "curl -sf -X PUT -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' \
+     -d '{\"department\":\"$ASSIGN_CODE\"}' $BACKEND_URL/api/admin/users/$VIEWER_ID/department"
+check "Keycloak now shows the assignment on the viewer" \
+  "[ \"\$(user_department viewer)\" = \"$ASSIGN_CODE\" ]"
+check "viewer username unchanged by the assignment" \
+  'kc_admin "/users?username=viewer%40dms.local&exact=true" | json_get "j[0][\"username\"]" | grep -qx viewer@dms.local'
+check "admin restores the viewer to ITDLZ" \
+  "curl -sf -X PUT -H 'Authorization: Bearer $ADMIN_TOKEN' -H 'Content-Type: application/json' \
+     -d '{\"department\":\"ITDLZ\"}' $BACKEND_URL/api/admin/users/$VIEWER_ID/department"
+check "Keycloak shows ITDLZ restored" \
+  '[ "$(user_department viewer)" = "ITDLZ" ]'
+check "temporary department can be deleted again" \
+  "curl -sf -X DELETE -H 'Authorization: Bearer $ADMIN_TOKEN' \
+     $BACKEND_URL/api/admin/departments/$ASSIGN_CODE"
+check "non-admin gets 403 assigning a department" \
+  "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X PUT \
+      -H 'Authorization: Bearer $VIEWER_TOKEN' -H 'Content-Type: application/json' \
+      -d '{\"department\":\"ITDLZ\"}' $BACKEND_URL/api/admin/users/$VIEWER_ID/department)\" = 403 ]"
 
 echo ""
 echo "Result: $PASS passed, $FAIL failed."
