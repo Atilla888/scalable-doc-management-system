@@ -24,6 +24,8 @@ import java.time.Instant;
  * @param parentId           identifier of the folder containing the document
  * @param ocrStatus          status of the OCR/text-extraction job
  * @param extractionMethod   method used to extract the document's text
+ * @param textPreview        short preview of the extracted text, only exposed
+ *                           after the caller has READ permission
  * @param indexingStatus     status of the document's search-index processing
  * @param documentStatus     overall lifecycle status of the document
  */
@@ -42,8 +44,11 @@ public record DocumentMetadataResponse(
         String parentId,
         String ocrStatus,
         String extractionMethod,
+        String textPreview,
         String indexingStatus,
         String documentStatus) {
+
+    private static final int TEXT_PREVIEW_MAX = 1600;
 
     /**
      * Builds a {@link DocumentMetadataResponse} from a {@link DocumentRecord} entity.
@@ -67,7 +72,26 @@ public record DocumentMetadataResponse(
                 record.getFolderId(),
                 record.getOcrStatus(),
                 record.getExtractionMethod(),
+                preview(record.getOcrText()),
                 record.getIndexingStatus(),
                 record.getDocumentStatus());
+    }
+
+    /**
+     * Returns a compact display preview of extracted text. The full OCR text can
+     * be large, so the detail API exposes only a bounded window for UI display.
+     *
+     * @param text extracted OCR/text content
+     * @return a trimmed preview, or {@code null} when no text is available
+     */
+    private static String preview(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String normalized = text.replaceAll("\\s+", " ").trim();
+        if (normalized.length() <= TEXT_PREVIEW_MAX) {
+            return normalized;
+        }
+        return normalized.substring(0, TEXT_PREVIEW_MAX).strip() + "…";
     }
 }

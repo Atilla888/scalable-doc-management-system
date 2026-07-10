@@ -54,6 +54,13 @@ const MetadataRow = ({ label, value }) => (
   </div>
 );
 
+const StatusCard = ({ label, value }) => (
+  <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
+    <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">{label}</p>
+    <p className="mt-2 text-base font-semibold text-text">{value || "—"}</p>
+  </div>
+);
+
 /**
  * Document detail page for the `:id` route.
  * @returns {JSX.Element|null}
@@ -130,26 +137,62 @@ const DocumentDetail = () => {
       </div>
 
       {downloadError && (
-        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {downloadForbidden
-            ? downloadError.detail || "You do not have permission to download this document."
-            : downloadError.detail || "The download could not be completed."}
-        </div>
+        <ApiErrorPanel
+          error={downloadError}
+          title={downloadForbidden ? "Download is not allowed" : "Download failed"}
+          message={
+            downloadForbidden
+              ? downloadError.detail || "You do not have permission to download this document."
+              : downloadError.detail || "The download could not be completed."
+          }
+        />
       )}
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatusCard label="Document type" value={data.documentType} />
+        <StatusCard label="EAP number" value={data.eapNumber} />
+        <StatusCard label="Uploaded" value={formatDate(data.uploadDate)} />
+      </div>
+
+      <section className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-text">Document content</h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              Description and extracted OCR text preview for quick review.
+            </p>
+          </div>
+          <OcrStatusBadge status={data.ocrStatus} />
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-background p-5">
+            <p className="text-sm font-semibold text-text">Description</p>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
+              {data.description || "No description was provided for this document."}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-background p-5">
+            <p className="text-sm font-semibold text-text">Extracted text preview</p>
+            <p className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap text-sm leading-6 text-text-secondary">
+              {data.textPreview ||
+                "No extracted text is available yet. If OCR is pending or processing, refresh this page after the worker finishes."}
+            </p>
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-text">Metadata</h2>
         <div className="mt-4 divide-y divide-border">
           <MetadataRow label="Title" value={data.title} />
-          <MetadataRow label="Description" value={data.description} />
-          <MetadataRow label="Document type" value={data.documentType} />
-          <MetadataRow label="EAP number" value={data.eapNumber} />
           <MetadataRow label="File name" value={data.fileName} />
           <MetadataRow label="Content type" value={data.contentType} />
           <MetadataRow label="Size" value={formatBytes(data.fileSize)} />
           <MetadataRow label="Uploaded by" value={data.uploaderId} />
           <MetadataRow label="Department" value={data.organizationalUnit} />
-          <MetadataRow label="Uploaded at" value={formatDate(data.uploadDate)} />
+          <MetadataRow label="Extraction method" value={data.extractionMethod} />
           <MetadataRow label="Indexing status" value={data.indexingStatus} />
           <MetadataRow label="Document status" value={data.documentStatus} />
         </div>
