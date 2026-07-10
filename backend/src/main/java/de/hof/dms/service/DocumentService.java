@@ -247,9 +247,25 @@ public class DocumentService {
         if (request == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "ACL payload is required");
         }
-        record.setAcl(request.toAcl());
+        FolderAcl newAcl = request.toAcl();
+        // Ownership is a privileged, escalation-relevant field: the owner rule and the
+        // department-manager rule both bypass the access flags. Only an admin may
+        // reassign it, a non-admin editing permissions on a document they manage keeps
+        // the existing owner/owner-department, so they cannot hand ownership to someone
+        // else or spoof owner_department to abuse the manager rule.
+        if (!isAdmin(user)) {
+            FolderAcl existing = record.getAcl();
+            newAcl.setOwner(existing != null ? existing.getOwner() : user.username());
+            newAcl.setOwnerDepartment(
+                    existing != null ? existing.getOwnerDepartment() : user.department());
+        }
+        record.setAcl(newAcl);
         DocumentRecord saved = documentRepository.save(record);
         return AclDto.from(saved.getAcl());
+    }
+
+    private static boolean isAdmin(CurrentUser user) {
+        return user.roles() != null && user.roles().contains(PermissionService.ROLE_ADMIN);
     }
 
     private DocumentRecord findActiveDocument(String id) {
@@ -293,7 +309,7 @@ public class DocumentService {
      * Default ACL for a freshly uploaded document. The uploader is the owner
      * (full access via the RBAC owner rule); admins/department managers get
      * access via their role rules. By default {@code inheritFromParent} is true,
-     * so the document takes on the read access of its parent folder — colleagues
+     * so the document takes on the read access of its parent folder, colleagues
      * (including viewers) who can read the folder can read the document. Uploading
      * with {@code inheritFromParent=false} keeps the document private to its
      * owner; broader or narrower sharing is set via

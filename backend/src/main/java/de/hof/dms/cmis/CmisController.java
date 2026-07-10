@@ -5,10 +5,13 @@ import de.hof.dms.service.DocumentService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+
+import java.nio.charset.StandardCharsets;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,7 +32,7 @@ import java.util.Map;
  * {@code /cmis/browser/{repositoryId}/root}.
  *
  * <p>Authentication (Keycloak Bearer JWT) is enforced by the global security
- * filter chain — every {@code /cmis/**} request must be authenticated, so
+ * filter chain, every {@code /cmis/**} request must be authenticated, so
  * unauthenticated calls receive {@code 401}. RBAC and CMIS faults are handled
  * inside {@link CmisService} / {@link CmisExceptionHandler}.
  */
@@ -149,11 +152,13 @@ public class CmisController {
     private ResponseEntity<?> streamContent(String repositoryId, String objectId, CurrentUser user) {
         DocumentService.DownloadPayload payload =
                 cmisService.getContentStream(repositoryId, objectId, user);
+        ContentDisposition disposition =
+                ContentDisposition.attachment()
+                        .filename(payload.fileName(), StandardCharsets.UTF_8)
+                        .build();
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(payload.contentType()))
-                .header(
-                        HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + payload.fileName() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .body((Resource) payload.resource());
     }
 

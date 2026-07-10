@@ -84,6 +84,15 @@ public class UploadValidationService {
         if (fileName.contains("/") || fileName.contains("\\") || fileName.indexOf('\0') >= 0) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "File name contains invalid characters");
         }
+        // Reject quotes and control characters so the name can never break out of the
+        // Content-Disposition header quoting on download (header spoofing / injection).
+        for (int index = 0; index < fileName.length(); index++) {
+            char character = fileName.charAt(index);
+            if (character == '"' || character < 0x20 || character == 0x7f) {
+                throw new ApiException(
+                        HttpStatus.BAD_REQUEST, "File name contains invalid characters");
+            }
+        }
         if (extensionOf(fileName).isBlank()) {
             throw new ApiException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "File extension is required");
         }

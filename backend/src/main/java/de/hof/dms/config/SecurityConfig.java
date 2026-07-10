@@ -39,11 +39,11 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Health — publicly accessible for probes
+                // Health, publicly accessible for probes
                 .requestMatchers("/health", "/actuator/health", "/actuator/info").permitAll()
-                // Admin endpoints — dms_admin only
+                // Admin endpoints, dms_admin only
                 .requestMatchers("/api/admin/**").hasAuthority("dms_admin")
-                // All other API endpoints — any authenticated user
+                // All other API endpoints, any authenticated user
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().authenticated()
             )
@@ -70,14 +70,16 @@ public class SecurityConfig {
 
     static class KeycloakRealmRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
         @Override
-        @SuppressWarnings("unchecked")
         public Collection<GrantedAuthority> convert(Jwt jwt) {
             Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-            if (realmAccess == null || !realmAccess.containsKey("roles")) {
+            // Fail closed: a missing or malformed realm_access/roles claim yields no
+            // authorities rather than a ClassCastException 500. An unchecked cast here
+            // would blow up on any token whose roles claim is not a JSON array.
+            if (realmAccess == null || !(realmAccess.get("roles") instanceof Collection<?> roles)) {
                 return List.of();
             }
-            List<String> roles = (List<String>) realmAccess.get("roles");
             return roles.stream()
+                    .map(String::valueOf)
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
         }
