@@ -129,6 +129,11 @@ export const apiClient = {
     if (response.status === 204) return null;
     return response.json();
   },
+  async put(path, body, options) {
+    const response = await request(path, { ...options, method: "PUT", body });
+    if (response.status === 204) return null;
+    return response.json();
+  },
   async delete(path, options) {
     const response = await request(path, { ...options, method: "DELETE" });
     return response.status === 204 ? null : response.json();
