@@ -35,7 +35,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Maven (backend uses the wrapper, but a system Maven is a useful fallback).
-RUN curl -fsSL "https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
+# archive.apache.org keeps every release; dlcdn.apache.org drops a version as
+# soon as a newer one ships, which 404s pinned builds like this one.
+RUN curl -fsSL "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz" \
         -o /tmp/maven.tar.gz \
     && tar -xzf /tmp/maven.tar.gz -C /opt \
     && ln -s "/opt/apache-maven-${MAVEN_VERSION}/bin/mvn" /usr/local/bin/mvn \
