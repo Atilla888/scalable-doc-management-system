@@ -102,6 +102,34 @@ class UploadValidationServiceTest {
     }
 
     @Test
+    void rejectsFileNameWithDoubleQuote() {
+        MockMultipartFile file =
+                new MockMultipartFile(
+                        "file",
+                        "re\"port.pdf",
+                        "application/pdf",
+                        "%PDF-1.4 content".getBytes(StandardCharsets.US_ASCII));
+
+        assertThatThrownBy(() -> validator.validate(file))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("invalid characters");
+    }
+
+    @Test
+    void rejectsFileNameWithControlCharacter() {
+        MockMultipartFile file =
+                new MockMultipartFile(
+                        "file",
+                        "report\n.pdf",
+                        "application/pdf",
+                        "%PDF-1.4 content".getBytes(StandardCharsets.US_ASCII));
+
+        assertThatThrownBy(() -> validator.validate(file))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("invalid characters");
+    }
+
+    @Test
     void rejectsExtensionThatDoesNotMatchContentType() {
         MockMultipartFile file =
                 new MockMultipartFile(

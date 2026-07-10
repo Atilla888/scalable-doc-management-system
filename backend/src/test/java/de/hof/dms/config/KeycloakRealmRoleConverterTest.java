@@ -38,11 +38,29 @@ class KeycloakRealmRoleConverterTest {
         assertThat(converter.convert(jwt)).isEmpty();
     }
 
+    @Test
+    void returnsEmptyWhenRolesClaimIsNotACollection() {
+        Jwt jwt = jwtWithRealmAccess(Map.of("roles", "dms_admin"));
+
+        assertThat(converter.convert(jwt)).isEmpty();
+    }
+
+    @Test
+    void returnsEmptyWhenRolesKeyMissing() {
+        Jwt jwt = jwtWithRealmAccess(Map.of("account", "ignored"));
+
+        assertThat(converter.convert(jwt)).isEmpty();
+    }
+
     private static Jwt jwtWithRoles(String... roles) {
+        return jwtWithRealmAccess(Map.of("roles", List.of(roles)));
+    }
+
+    private static Jwt jwtWithRealmAccess(Object realmAccess) {
         return Jwt.withTokenValue("token")
                 .header("alg", "none")
                 .subject("user-1")
-                .claim("realm_access", Map.of("roles", List.of(roles)))
+                .claim("realm_access", realmAccess)
                 .issuedAt(Instant.now())
                 .expiresAt(Instant.now().plusSeconds(3600))
                 .build();
