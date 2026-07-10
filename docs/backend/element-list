@@ -1,0 +1,9 @@
+de.hof.dms
+de.hof.dms.cmis
+de.hof.dms.config
+de.hof.dms.controller
+de.hof.dms.domain
+de.hof.dms.dto
+de.hof.dms.exception
+de.hof.dms.repository
+de.hof.dms.service
