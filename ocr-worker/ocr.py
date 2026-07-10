@@ -95,6 +95,7 @@ def _pdf_text_layer(data: bytes) -> str:
 
 
 def _ocr_image(data: bytes, languages: str) -> str:
+    """OCR a standalone image with Tesseract. Raises :class:`OcrError` on failure."""
     from PIL import Image
     import pytesseract
 
@@ -106,6 +107,7 @@ def _ocr_image(data: bytes, languages: str) -> str:
 
 
 def _ocr_pdf(data: bytes, languages: str) -> str:
+    """Rasterize a scanned PDF and OCR each page. Raises :class:`OcrError` on failure."""
     from pdf2image import convert_from_bytes
     import pytesseract
 

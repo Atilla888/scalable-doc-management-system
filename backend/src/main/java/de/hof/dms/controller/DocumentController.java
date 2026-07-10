@@ -29,6 +29,14 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * REST endpoints for the document lifecycle under {@code /api/documents}: upload, metadata
+ * retrieval and update, binary download, deletion, and per-document permission management.
+ *
+ * <p>Requires an authenticated user; access to each document and its permissions is enforced
+ * by {@link DocumentService} against the resolved {@link CurrentUser}. Only active when a
+ * MongoDB backend is present (profile {@code !no-mongo}).
+ */
 @RestController
 @RequestMapping("/api/documents")
 @Profile("!no-mongo")
@@ -40,6 +48,20 @@ public class DocumentController {
         this.documentService = documentService;
     }
 
+    /**
+     * Uploads a new document with its metadata into the target folder on behalf of the
+     * current user.
+     *
+     * @param file the uploaded file content
+     * @param title the document title
+     * @param documentType the document type classifier
+     * @param parentId the id of the containing folder
+     * @param description optional free-text description
+     * @param eapCategory optional EAP category
+     * @param inheritFromParent whether the document inherits its ACL from the parent folder
+     * @param jwt the current user's JWT
+     * @return a 200 response describing the stored document
+     */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<DocumentUploadResponse> upload(
             @RequestPart("file") MultipartFile file,
@@ -63,12 +85,27 @@ public class DocumentController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Returns the metadata of a document the current user is allowed to read.
+     *
+     * @param id the document id
+     * @param jwt the current user's JWT
+     * @return the document metadata
+     */
     @GetMapping("/{id}")
     public DocumentMetadataResponse getMetadata(
             @PathVariable String id, @AuthenticationPrincipal Jwt jwt) {
         return documentService.getMetadata(id, CurrentUser.fromJwt(jwt));
     }
 
+    /**
+     * Streams the binary content of a document as a file attachment, if the current user may
+     * read it. The response carries the stored content type and original file name.
+     *
+     * @param id the document id
+     * @param jwt the current user's JWT
+     * @return a 200 response with the document content as a downloadable attachment
+     */
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> download(
             @PathVariable String id, @AuthenticationPrincipal Jwt jwt) {
@@ -84,12 +121,27 @@ public class DocumentController {
                 .body(payload.resource());
     }
 
+    /**
+     * Deletes a document the current user is permitted to remove, returning HTTP 204.
+     *
+     * @param id the document id
+     * @param jwt the current user's JWT
+     * @return a 204 no-content response
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id, @AuthenticationPrincipal Jwt jwt) {
         documentService.delete(id, CurrentUser.fromJwt(jwt));
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Updates the editable metadata of a document the current user may modify.
+     *
+     * @param id the document id
+     * @param request the new metadata values
+     * @param jwt the current user's JWT
+     * @return the updated document metadata
+     */
     @PutMapping("/{id}/metadata")
     public DocumentMetadataResponse updateMetadata(
             @PathVariable String id,
@@ -98,12 +150,28 @@ public class DocumentController {
         return documentService.updateMetadata(id, request, CurrentUser.fromJwt(jwt));
     }
 
+    /**
+     * Returns the access-control settings of a document for the current user.
+     *
+     * @param id the document id
+     * @param jwt the current user's JWT
+     * @return the document's permissions
+     */
     @GetMapping("/{id}/permissions")
     public PermissionsResponse getPermissions(
             @PathVariable String id, @AuthenticationPrincipal Jwt jwt) {
         return documentService.getPermissions(id, CurrentUser.fromJwt(jwt));
     }
 
+    /**
+     * Replaces the access-control list of a document, if the current user is authorized to
+     * manage its permissions.
+     *
+     * @param id the document id
+     * @param request the new ACL to apply
+     * @param jwt the current user's JWT
+     * @return the persisted ACL
+     */
     @PutMapping("/{id}/permissions")
     public AclDto updatePermissions(
             @PathVariable String id,

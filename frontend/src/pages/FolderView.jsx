@@ -1,3 +1,8 @@
+/**
+ * @module pages/FolderView
+ * Folder page for the `folders/:id` route: breadcrumb, contents table, folder
+ * management actions, and an upload-here link.
+ */
 import { Link, useParams } from "react-router-dom";
 import { getFolder } from "../api/folders";
 import useApiResource from "../hooks/useApiResource";
@@ -7,6 +12,10 @@ import Breadcrumb from "../components/Breadcrumb";
 import ApiErrorPanel from "../components/ApiErrorPanel";
 import LoadingState from "../components/LoadingState";
 
+/**
+ * Renders a single folder's view.
+ * @returns {JSX.Element}
+ */
 const FolderView = () => {
   const { id } = useParams();
   const { data, error, loading, reload } = useApiResource(

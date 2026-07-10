@@ -1,3 +1,8 @@
+/**
+ * @module components/Sidebar
+ * Left navigation sidebar; admin-only links appear for users with the
+ * `dms_admin` role.
+ */
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -7,6 +12,10 @@ const baseNavItems = [
   { label: "Upload",    to: "/upload" },
 ];
 
+/**
+ * Renders the primary navigation, appending admin links for admins.
+ * @returns {JSX.Element}
+ */
 const Sidebar = () => {
   const { hasRole } = useAuth();
 

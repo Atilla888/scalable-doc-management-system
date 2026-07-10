@@ -1,3 +1,8 @@
+/**
+ * @module main
+ * Application entry point. Mounts the React app into #root, wrapping it with the
+ * router and the authentication provider.
+ */
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";

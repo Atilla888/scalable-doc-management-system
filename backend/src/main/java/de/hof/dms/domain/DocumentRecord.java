@@ -7,6 +7,21 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
 
+/**
+ * Persistent entity for an uploaded document, stored in the MongoDB
+ * {@code documents} collection. The binary file itself lives in GridFS
+ * (referenced by {@code gridFsFileId}); this record holds the metadata,
+ * ownership/permission data ({@link FolderAcl}) and processing state.
+ *
+ * <p>Several string fields carry status/lifecycle values:
+ * {@code ocrStatus} tracks the OCR/text-extraction job (e.g. pending, running,
+ * done, failed), {@code extractionMethod} records how text was obtained (e.g.
+ * born-digital extraction vs. OCR), {@code ocrError}/{@code retryCount} capture
+ * failure details and retry attempts, {@code indexingStatus} tracks full-text
+ * index state, and {@code documentStatus} reflects the overall document
+ * lifecycle. {@code eapNumber} is the unique business identifier assigned to the
+ * document.
+ */
 @Document(collection = "documents")
 public class DocumentRecord {
 

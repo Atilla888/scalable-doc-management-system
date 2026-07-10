@@ -1,5 +1,16 @@
+/**
+ * @module components/ApiErrorPanel
+ * Full-panel error display that turns an {@link ApiError} (or any error) into a
+ * friendly code/title/message with an optional retry button.
+ */
 import { ApiError } from "../api/client";
 
+/**
+ * Maps an error to a display-friendly `{ code, title, message }` shape,
+ * with tailored copy for 401/403/404 {@link ApiError}s.
+ * @param {*} error The error to describe.
+ * @returns {{code: string, title: string, message: string}}
+ */
 function describe(error) {
   if (error instanceof ApiError) {
     if (error.isForbidden) {
@@ -38,6 +49,13 @@ function describe(error) {
   };
 }
 
+/**
+ * Renders an error panel for a failed request.
+ * @param {Object} props
+ * @param {*} props.error The error to display.
+ * @param {() => void} [props.onRetry] Optional retry handler; shows a button when set.
+ * @returns {JSX.Element}
+ */
 const ApiErrorPanel = ({ error, onRetry }) => {
   const { code, title, message } = describe(error);
   return (

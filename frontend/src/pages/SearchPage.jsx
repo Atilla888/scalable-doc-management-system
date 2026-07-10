@@ -1,3 +1,8 @@
+/**
+ * @module pages/SearchPage
+ * Document search page: filter form synced to the URL query string, paginated
+ * results, and term highlighting. Results are permission-scoped by the backend.
+ */
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { searchDocuments } from "../api/search";
@@ -15,7 +20,12 @@ const SORT_OPTIONS = [
   { value: "title_desc", label: "Title Z–A" },
 ];
 
-/** Wraps case-insensitive matches of `term` in <mark> for highlighting. */
+/**
+ * Wraps case-insensitive matches of `term` in <mark> for highlighting.
+ * @param {string} text Text to render.
+ * @param {string} [term] Search term to highlight.
+ * @returns {React.ReactNode} The text with matches wrapped in <mark>.
+ */
 function highlight(text, term) {
   const value = term?.trim();
   if (!text || !value) return text;
@@ -43,6 +53,10 @@ const emptyForm = {
   sort: "date_desc",
 };
 
+/**
+ * Renders the document search page.
+ * @returns {JSX.Element}
+ */
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 

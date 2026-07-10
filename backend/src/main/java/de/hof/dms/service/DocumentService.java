@@ -29,6 +29,13 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Core document lifecycle service: uploading files (stored in GridFS with an
+ * allocated EAP number), reading metadata, downloading content, replacing
+ * content, updating metadata, soft-deleting, and reading/updating per-document
+ * permissions. Every operation enforces access through {@link PermissionService},
+ * and deletion is a soft status change rather than a physical removal.
+ */
 @Service
 @Profile("!no-mongo")
 public class DocumentService {
@@ -63,6 +70,15 @@ public class DocumentService {
         this.uploadValidationService = uploadValidationService;
     }
 
+    /**
+     * Validates and stores a new document: the file is validated, an EAP number
+     * is allocated, the binary is saved to GridFS, and an ACL plus initial OCR and
+     * indexing status are set. Requires <b>create</b> permission on the target
+     * parent folder.
+     *
+     * @throws ApiException with 400/404 for invalid metadata or a missing parent
+     *     folder
+     */
     public DocumentUploadResponse upload(
             MultipartFile file,
             String title,
@@ -129,12 +145,23 @@ public class DocumentService {
         return new DocumentUploadResponse(saved.getId(), UPLOAD_STATUS, saved.getOcrStatus());
     }
 
+    /**
+     * Returns the metadata of an active document. Requires <b>read</b> permission.
+     *
+     * @throws ApiException with 404 if the document is missing or deleted
+     */
     public DocumentMetadataResponse getMetadata(String id, CurrentUser user) {
         DocumentRecord record = findActiveDocument(id);
         permissionService.requireDocument(user, record, PermissionService.Action.READ);
         return DocumentMetadataResponse.from(record);
     }
 
+    /**
+     * Streams the stored binary of an active document from GridFS. Requires
+     * <b>read</b> permission.
+     *
+     * @throws ApiException with 404 if the document or its stored file is missing
+     */
     public DownloadPayload download(String id, CurrentUser user) {
         DocumentRecord record = findActiveDocument(id);
         permissionService.requireDocument(user, record, PermissionService.Action.READ);
@@ -153,6 +180,12 @@ public class DocumentService {
         return new DownloadPayload(gridFsResource, record.getContentType(), record.getFileName());
     }
 
+    /**
+     * Soft-deletes a document by marking its status {@code deleted}; the record and
+     * its GridFS blob are retained. Requires <b>delete</b> permission.
+     *
+     * @throws ApiException with 404 if the document is missing or already deleted
+     */
     public void delete(String id, CurrentUser user) {
         DocumentRecord record = findActiveDocument(id);
         permissionService.requireDocument(user, record, PermissionService.Action.DELETE);
@@ -199,6 +232,13 @@ public class DocumentService {
         return DocumentMetadataResponse.from(record);
     }
 
+    /**
+     * Updates the editable metadata (title, description, document type) of an
+     * active document; blank fields are left unchanged. Requires <b>update</b>
+     * permission.
+     *
+     * @throws ApiException with 404 if the document is missing or deleted
+     */
     public DocumentMetadataResponse updateMetadata(
             String id, MetadataUpdateRequest request, CurrentUser user) {
         DocumentRecord record = findActiveDocument(id);
@@ -219,6 +259,13 @@ public class DocumentService {
         return DocumentMetadataResponse.from(saved);
     }
 
+    /**
+     * Returns the caller's effective permissions on a document, plus the full ACL
+     * only when the caller may manage permissions (admin or
+     * {@code MANAGE_PERMISSIONS}). Requires <b>read</b> permission.
+     *
+     * @throws ApiException with 404 if the document is missing or deleted
+     */
     public PermissionsResponse getPermissions(String id, CurrentUser user) {
         DocumentRecord record = findActiveDocument(id);
         permissionService.requireDocument(user, record, PermissionService.Action.READ);
@@ -240,6 +287,13 @@ public class DocumentService {
         return new PermissionsResponse(effective, acl);
     }
 
+    /**
+     * Replaces a document's ACL with the supplied one. Requires
+     * <b>manage_permissions</b> on the document.
+     *
+     * @throws ApiException with 404 if the document is missing/deleted, or 400 if
+     *     the ACL payload is null
+     */
     public AclDto updatePermissions(String id, AclDto request, CurrentUser user) {
         DocumentRecord record = findActiveDocument(id);
         permissionService.requireDocument(
@@ -342,5 +396,6 @@ public class DocumentService {
         return metadata;
     }
 
+    /** Carries a downloadable document's binary resource with its content type and file name. */
     public record DownloadPayload(Resource resource, String contentType, String fileName) {}
 }

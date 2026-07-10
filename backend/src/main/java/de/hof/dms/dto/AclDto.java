@@ -5,6 +5,13 @@ import de.hof.dms.domain.FolderAcl;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * API-layer view of a {@link FolderAcl}: owner, owning department, the allowed
+ * user/role/department lists, the effective {@link AccessDto} flags and the
+ * {@code inheritFromParent} switch. Mapped to/from the domain object via
+ * {@link #from(FolderAcl)} and {@link #toAcl()}; used when reading or updating
+ * folder/document permissions.
+ */
 public record AclDto(
         String owner,
         String ownerDepartment,

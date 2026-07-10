@@ -1,8 +1,16 @@
+/**
+ * @module hooks/useApiResource
+ * Reusable data-fetching hook with loading/error/data state and abort handling.
+ */
 import { useCallback, useEffect, useState } from "react";
 
 /**
  * Small data-fetching helper: tracks loading/error/data for an async loader.
- * `loader` receives an AbortSignal. Re-runs whenever any value in `deps` changes.
+ * `loader` receives an AbortSignal. Re-runs whenever any value in `deps` changes
+ * or `reload()` is called. AbortErrors are ignored.
+ * @param {(signal: AbortSignal) => Promise<*>} loader Async loader function.
+ * @param {Array<*>} [deps=[]] Dependency list that re-triggers the loader.
+ * @returns {{data: *, error: *, loading: boolean, reload: () => void}}
  */
 export default function useApiResource(loader, deps = []) {
   const [data, setData] = useState(null);

@@ -1,3 +1,8 @@
+/**
+ * @module pages/OCRStatusPage
+ * Admin OCR queue page: summary counts, a jobs table, and a retry action for
+ * failed jobs.
+ */
 import { useCallback, useState } from "react";
 import useApiResource from "../hooks/useApiResource";
 import { listOcrJobs, retryOcr } from "../api/ocr";
@@ -12,6 +17,10 @@ const SUMMARY = [
   { key: "failed", label: "Failed" },
 ];
 
+/**
+ * Renders the OCR status/queue page.
+ * @returns {JSX.Element}
+ */
 const OCRStatusPage = () => {
   const { data, error, loading, reload } = useApiResource(
     (signal) => listOcrJobs(undefined, signal),

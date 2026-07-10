@@ -7,6 +7,7 @@ package de.hof.dms.dto;
  */
 public record PermissionsResponse(EffectivePermissions effective, AclDto acl) {
 
+    /** The resolved permission flags the requesting user actually has on the document. */
     public record EffectivePermissions(
             boolean read,
             boolean create,

@@ -17,6 +17,7 @@ class Config:
 
     @classmethod
     def from_env(cls) -> "Config":
+        """Build a Config from environment variables, applying the defaults."""
         return cls(
             # The database name is taken from the URI path (".../dms").
             mongodb_uri=os.getenv("MONGODB_URI", "mongodb://mongodb:27017/dms"),
@@ -33,18 +34,22 @@ class Config:
 
     @property
     def poll_interval_seconds(self) -> float:
+        """Poll interval expressed in seconds."""
         return self.poll_interval_ms / 1000.0
 
     @property
     def max_file_bytes(self) -> int:
+        """Maximum allowed file size in bytes."""
         return self.max_file_mb * 1024 * 1024
 
     @property
     def processing_timeout_seconds(self) -> float:
+        """Processing timeout expressed in seconds."""
         return self.processing_timeout_ms / 1000.0
 
 
 def _positive_int(name: str, default: int) -> int:
+    """Read a positive int env var, falling back to the default if unset/invalid."""
     raw = os.getenv(name)
     if raw is None or raw.strip() == "":
         return default

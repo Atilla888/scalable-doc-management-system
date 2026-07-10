@@ -14,6 +14,12 @@ import org.springframework.stereotype.Service;
 import java.time.Year;
 import java.util.regex.Pattern;
 
+/**
+ * Allocates and validates EAP numbers of the form
+ * {@code CATEGORY-DEPARTMENT-YEAR-SEQUENCE}. Sequence values are handed out
+ * atomically per (category, department, year) via an upserting
+ * find-and-modify counter, so concurrent uploads never receive duplicate numbers.
+ */
 @Service
 @Profile("!no-mongo")
 public class EapNumberService {
@@ -30,6 +36,15 @@ public class EapNumberService {
         this.mongoTemplate = mongoTemplate;
     }
 
+    /**
+     * Allocates the next EAP number for the given category and department in the
+     * current year, atomically incrementing the per-group sequence counter.
+     *
+     * @param department department code; blank values default to {@code GEN}
+     * @return a newly allocated, format-valid EAP number
+     * @throws ApiException if the category/department are invalid or the sequence
+     *     could not be allocated
+     */
     public String generateNext(String category, String department) {
         validateCategory(category);
         String dept = normalizeDepartment(department);
@@ -63,6 +78,11 @@ public class EapNumberService {
         return eapNumber;
     }
 
+    /**
+     * Validates that a value matches the full EAP number format.
+     *
+     * @throws ApiException with 400 if the format is invalid
+     */
     public void validateFormat(String eapNumber) {
         if (eapNumber == null || !EAP_FORMAT.matcher(eapNumber).matches()) {
             throw new ApiException(
@@ -71,6 +91,11 @@ public class EapNumberService {
         }
     }
 
+    /**
+     * Validates that the EAP category is 1-10 digits.
+     *
+     * @throws ApiException with 400 if the category is invalid
+     */
     public void validateCategory(String category) {
         if (category == null || !CATEGORY_FORMAT.matcher(category).matches()) {
             throw new ApiException(

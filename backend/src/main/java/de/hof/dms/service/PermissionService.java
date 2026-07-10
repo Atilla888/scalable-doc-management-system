@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 @Profile("!no-mongo")
 public class PermissionService {
 
+    /** The kinds of access that can be requested on a document or folder. */
     public enum Action {
         READ,
         CREATE,
@@ -50,6 +51,13 @@ public class PermissionService {
 
     // ---- public API -------------------------------------------------------
 
+    /**
+     * Resolves whether the user may perform {@code action} on a document,
+     * evaluating the document's own ACL first and then, when it inherits, the
+     * parent folder chain. Admins are always allowed.
+     *
+     * @return {@code true} if the action is permitted
+     */
     public boolean canDocument(CurrentUser user, DocumentRecord doc, Action action) {
         if (isAdmin(user)) {
             return true;
@@ -71,6 +79,13 @@ public class PermissionService {
         return false;
     }
 
+    /**
+     * Resolves whether the user may perform {@code action} on a folder, walking
+     * the folder's inheritance chain. Admins are always allowed, and a
+     * {@code dms_contributor} may CREATE within any folder it can READ.
+     *
+     * @return {@code true} if the action is permitted
+     */
     public boolean canFolder(CurrentUser user, Folder folder, Action action) {
         if (isAdmin(user)) {
             return true;
@@ -83,18 +98,32 @@ public class PermissionService {
         return folderChainGrants(user, folder, action);
     }
 
+    /**
+     * Enforces that the user may perform {@code action} on the document.
+     *
+     * @throws ApiException with 403 if the action is not permitted
+     */
     public void requireDocument(CurrentUser user, DocumentRecord doc, Action action) {
         if (!canDocument(user, doc, action)) {
             throw forbidden(action);
         }
     }
 
+    /**
+     * Enforces that the user may perform {@code action} on the folder.
+     *
+     * @throws ApiException with 403 if the action is not permitted
+     */
     public void requireFolder(CurrentUser user, Folder folder, Action action) {
         if (!canFolder(user, folder, action)) {
             throw forbidden(action);
         }
     }
 
+    /**
+     * Returns whether the user may manage a document's permissions, i.e. is an
+     * admin or holds {@code MANAGE_PERMISSIONS} on it.
+     */
     public boolean canManageDocument(CurrentUser user, DocumentRecord doc) {
         return isAdmin(user) || canDocument(user, doc, Action.MANAGE_PERMISSIONS);
     }

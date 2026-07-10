@@ -1,3 +1,8 @@
+/**
+ * @module pages/Dashboard
+ * Landing page after login: greets the user and lists the root folder's
+ * contents with folder-management actions.
+ */
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getRootFolder } from "../api/folders";
@@ -7,6 +12,10 @@ import FolderContents from "../components/FolderContents";
 import ApiErrorPanel from "../components/ApiErrorPanel";
 import LoadingState from "../components/LoadingState";
 
+/**
+ * Dashboard page showing the root folder contents.
+ * @returns {JSX.Element}
+ */
 const Dashboard = () => {
   const { user, roles } = useAuth();
   const displayName = user?.preferred_username ?? user?.name ?? "User";

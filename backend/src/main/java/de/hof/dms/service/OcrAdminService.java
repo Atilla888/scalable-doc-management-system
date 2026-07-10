@@ -10,6 +10,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * Administrative view over the OCR processing queue. Lists OCR jobs by status
+ * and allows re-queuing failed jobs. OCR status values progress
+ * {@code pending → processing → completed}, or {@code failed} on error.
+ */
 @Service
 @Profile("!no-mongo")
 public class OcrAdminService {
@@ -29,6 +34,10 @@ public class OcrAdminService {
         this.documentRepository = documentRepository;
     }
 
+    /**
+     * Lists OCR jobs, filtered to a single status when one is given, otherwise
+     * returning all jobs in the OCR queue, newest upload first.
+     */
     public List<OcrJobResponse> listJobs(String status) {
         List<DocumentRecord> records =
                 status != null && !status.isBlank()
@@ -37,6 +46,13 @@ public class OcrAdminService {
         return records.stream().map(OcrJobResponse::from).toList();
     }
 
+    /**
+     * Re-queues a failed OCR job by resetting it to {@code pending} and clearing
+     * its error, so the worker will process it again.
+     *
+     * @throws ApiException with 404 if the document is missing, or 409 if the job
+     *     is not in the {@code failed} state
+     */
     public OcrJobResponse retry(String id) {
         DocumentRecord record =
                 documentRepository

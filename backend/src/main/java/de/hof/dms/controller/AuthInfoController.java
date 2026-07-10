@@ -18,6 +18,14 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class AuthInfoController {
 
+    /**
+     * Returns the authenticated caller's identity claims (subject, username, email, name,
+     * realm roles and optional department) extracted from their Keycloak JWT. Requires an
+     * authenticated user.
+     *
+     * @param jwt the validated Keycloak JWT of the current user
+     * @return a 200 response containing the selected identity claims
+     */
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> me(@AuthenticationPrincipal Jwt jwt) {
         var realmAccess = jwt.getClaimAsMap("realm_access");

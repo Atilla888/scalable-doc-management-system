@@ -1,3 +1,8 @@
+/**
+ * @module App
+ * Top-level route table: public routes (login, unauthorized) and protected
+ * routes wrapped in {@link ProtectedRoute} and the shared {@link Layout}.
+ */
 import { Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -10,6 +15,10 @@ import AdminPage from "./pages/AdminPage";
 import OCRStatusPage from "./pages/OCRStatusPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+/**
+ * Full-page 403 shown when a user lacks the role required for a route.
+ * @returns {JSX.Element}
+ */
 function Unauthorized() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 text-center">
@@ -27,6 +36,10 @@ function Unauthorized() {
   );
 }
 
+/**
+ * Root application component defining the client-side route hierarchy.
+ * @returns {JSX.Element}
+ */
 export default function App() {
   return (
     <Routes>

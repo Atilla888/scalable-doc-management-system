@@ -1,3 +1,8 @@
+/**
+ * @module components/OcrStatusBadge
+ * Colored pill badge conveying a document's OCR status.
+ */
+
 const STYLES = {
   pending: "border-amber-300 bg-amber-50 text-amber-700",
   processing: "border-blue-300 bg-blue-50 text-blue-700",
@@ -14,6 +19,13 @@ const LABELS = {
   not_required: "OCR not required",
 };
 
+/**
+ * Renders a status pill for an OCR state (pending/processing/completed/failed/
+ * not_required); unknown values render with neutral styling.
+ * @param {Object} props
+ * @param {string} [props.status] The OCR status (case-insensitive).
+ * @returns {JSX.Element}
+ */
 const OcrStatusBadge = ({ status }) => {
   const key = (status || "").toLowerCase();
   const style = STYLES[key] || "border-border bg-background text-text-secondary";

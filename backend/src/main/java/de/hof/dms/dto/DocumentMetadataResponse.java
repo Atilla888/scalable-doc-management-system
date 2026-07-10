@@ -4,6 +4,12 @@ import de.hof.dms.domain.DocumentRecord;
 
 import java.time.Instant;
 
+/**
+ * Full metadata view of a document returned by the document-detail endpoint.
+ * Exposes descriptive fields, upload info and processing-state values
+ * (OCR/extraction/indexing/document status) from a {@link DocumentRecord},
+ * without the binary content or ACL. Built via {@link #from(DocumentRecord)}.
+ */
 public record DocumentMetadataResponse(
         String id,
         String title,

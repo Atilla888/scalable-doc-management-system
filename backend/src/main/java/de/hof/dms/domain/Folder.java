@@ -6,6 +6,12 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
 
+/**
+ * Persistent entity for a folder in the document hierarchy, stored in the
+ * MongoDB {@code folders} collection. Folders form a tree via {@code parentId}
+ * and cache their full {@code path}; each carries its own access-control list
+ * ({@link FolderAcl}) governing who may read or modify it and its contents.
+ */
 @Document(collection = "folders")
 public class Folder {
 

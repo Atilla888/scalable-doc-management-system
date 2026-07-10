@@ -1,3 +1,15 @@
+/**
+ * @module pages/SectionPage
+ * Generic titled placeholder page for not-yet-implemented sections.
+ */
+
+/**
+ * Renders a titled placeholder panel.
+ * @param {Object} props
+ * @param {string} props.title Section title.
+ * @param {string} props.description Section description.
+ * @returns {JSX.Element}
+ */
 const SectionPage = ({ title, description }) => {
   return (
     <div className="space-y-6">

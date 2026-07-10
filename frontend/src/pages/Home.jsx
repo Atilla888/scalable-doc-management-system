@@ -1,3 +1,12 @@
+/**
+ * @module pages/Home
+ * Static workspace-overview placeholder page with sample stat cards.
+ */
+
+/**
+ * Renders the workspace overview placeholder.
+ * @returns {JSX.Element}
+ */
 const Home = () => {
   return (
     <div className="space-y-6">

@@ -1,3 +1,8 @@
+/**
+ * @module pages/UploadPage
+ * Document upload page: file + metadata form, parent-folder selection (root and
+ * its immediate subfolders), and success/error feedback.
+ */
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -11,6 +16,10 @@ import OcrStatusBadge from "../components/OcrStatusBadge";
 
 const DOC_TYPES = ["report", "invoice", "contract", "scan", "letter", "other"];
 
+/**
+ * Renders the document upload page.
+ * @returns {JSX.Element}
+ */
 const UploadPage = () => {
   const { user } = useAuth();
   const department = user?.department ?? "—";

@@ -1,3 +1,8 @@
+/**
+ * @module pages/DocumentDetail
+ * Document detail page: shows metadata, a live-updating OCR badge (polled while
+ * OCR runs), and an authenticated download action.
+ */
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getDocument, downloadDocument } from "../api/documents";
@@ -9,6 +14,11 @@ import LoadingState from "../components/LoadingState";
 
 const ACTIVE_OCR = new Set(["pending", "processing"]);
 
+/**
+ * Formats an ISO date/time string for display, falling back gracefully.
+ * @param {string} [value] Date value.
+ * @returns {string} Localized string, the raw value, or "—".
+ */
 function formatDate(value) {
   if (!value) return "—";
   try {
@@ -18,6 +28,11 @@ function formatDate(value) {
   }
 }
 
+/**
+ * Formats a byte count as B/KB/MB.
+ * @param {number} [bytes] Size in bytes.
+ * @returns {string} Human-readable size, or "—" when null/undefined.
+ */
 function formatBytes(bytes) {
   if (bytes == null) return "—";
   if (bytes < 1024) return `${bytes} B`;
@@ -25,6 +40,13 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/**
+ * A single label/value row in the metadata panel.
+ * @param {Object} props
+ * @param {string} props.label Field label.
+ * @param {*} [props.value] Field value; renders "—" when nullish.
+ * @returns {JSX.Element}
+ */
 const MetadataRow = ({ label, value }) => (
   <div className="grid grid-cols-[160px_minmax(0,1fr)] gap-4 py-2 text-sm">
     <span className="text-text-secondary">{label}</span>
@@ -32,6 +54,10 @@ const MetadataRow = ({ label, value }) => (
   </div>
 );
 
+/**
+ * Document detail page for the `:id` route.
+ * @returns {JSX.Element|null}
+ */
 const DocumentDetail = () => {
   const { id } = useParams();
   const { data, error, loading, reload } = useApiResource(

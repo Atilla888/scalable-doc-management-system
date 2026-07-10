@@ -24,6 +24,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST endpoints for browsing and managing the folder hierarchy under {@code /api/folders}.
+ *
+ * <p>Requires an authenticated user; per-folder visibility and mutation are enforced by
+ * {@link FolderService} against the resolved {@link CurrentUser}. Only active when a MongoDB
+ * backend is present (profile {@code !no-mongo}).
+ */
 @RestController
 @RequestMapping("/api/folders")
 @Profile("!no-mongo")
@@ -35,6 +42,16 @@ public class FolderController {
         this.folderService = folderService;
     }
 
+    /**
+     * Lists the child folders of a given parent (or top-level folders when none is given),
+     * filtered to those visible to the current user.
+     *
+     * @param parentId optional parent folder id; null lists top-level folders
+     * @param page zero-based page index
+     * @param size page size
+     * @param jwt the current user's JWT
+     * @return a page of folders visible to the user
+     */
     @GetMapping
     public FolderPage list(
             @RequestParam(value = "parentId", required = false) String parentId,
@@ -44,6 +61,13 @@ public class FolderController {
         return folderService.listFolders(parentId, page, size, CurrentUser.fromJwt(jwt));
     }
 
+    /**
+     * Creates a new folder on behalf of the current user, returning HTTP 201 on success.
+     *
+     * @param request the folder creation payload (name, parent, etc.)
+     * @param jwt the current user's JWT
+     * @return a 201 response containing the created folder
+     */
     @PostMapping
     public ResponseEntity<FolderResponse> create(
             @RequestBody CreateFolderRequest request, @AuthenticationPrincipal Jwt jwt) {
@@ -51,6 +75,15 @@ public class FolderController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    /**
+     * Applies a partial update (e.g. rename or move) to the given folder if the current
+     * user is permitted.
+     *
+     * @param id the folder id
+     * @param request the fields to update
+     * @param jwt the current user's JWT
+     * @return the updated folder
+     */
     @PatchMapping("/{id}")
     public FolderResponse update(
             @PathVariable String id,
@@ -59,6 +92,15 @@ public class FolderController {
         return folderService.updateFolder(id, request, CurrentUser.fromJwt(jwt));
     }
 
+    /**
+     * Deletes the given folder, returning HTTP 204. When {@code recursive} is false a
+     * non-empty folder is rejected by the service; when true its contents are removed too.
+     *
+     * @param id the folder id
+     * @param recursive whether to delete the folder together with its contents
+     * @param jwt the current user's JWT
+     * @return a 204 no-content response
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @PathVariable String id,
@@ -68,16 +110,37 @@ public class FolderController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Returns a flat list summarizing every folder visible to the current user, suitable
+     * for building a navigation tree on the client.
+     *
+     * @param jwt the current user's JWT
+     * @return summaries of all folders visible to the user
+     */
     @GetMapping("/tree")
     public List<FolderSummary> tree(@AuthenticationPrincipal Jwt jwt) {
         return folderService.listAllFolders(CurrentUser.fromJwt(jwt));
     }
 
+    /**
+     * Returns the root-level view (subfolders and documents) for the current user.
+     *
+     * @param jwt the current user's JWT
+     * @return the root folder view
+     */
     @GetMapping("/root")
     public FolderViewResponse root(@AuthenticationPrincipal Jwt jwt) {
         return folderService.getRootView(CurrentUser.fromJwt(jwt));
     }
 
+    /**
+     * Returns the contents view (subfolders and documents) of a specific folder for the
+     * current user.
+     *
+     * @param id the folder id
+     * @param jwt the current user's JWT
+     * @return the folder view
+     */
     @GetMapping("/{id}")
     public FolderViewResponse folder(@PathVariable String id, @AuthenticationPrincipal Jwt jwt) {
         return folderService.getView(id, CurrentUser.fromJwt(jwt));

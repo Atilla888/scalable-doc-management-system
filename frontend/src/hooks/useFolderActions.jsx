@@ -1,3 +1,8 @@
+/**
+ * @module hooks/useFolderActions
+ * Shared folder create/rename/move/delete behaviour plus the modal dialog UI,
+ * reused by any page that lists folders.
+ */
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -16,6 +21,10 @@ const MANAGE_ROLES = ["dms_admin", "dms_department_manager", "dms_contributor"];
  * folders. Returns the role gate, the action handlers, and the modal element to
  * render. After every successful change it calls `reload()` so the tree
  * refreshes.
+ * @param {() => void} reload Callback that re-fetches the folder listing.
+ * @returns {{canManage: boolean, openCreate: (parentId: string) => void,
+ *   openRename: (folder: Object) => void, openMove: (folder: Object) => void,
+ *   remove: (folder: Object) => Promise<void>, dialogElement: JSX.Element|null}}
  */
 export default function useFolderActions(reload) {
   const { roles } = useAuth();

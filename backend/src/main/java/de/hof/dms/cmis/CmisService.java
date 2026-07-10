@@ -57,6 +57,7 @@ public class CmisService {
     private final String repositoryId;
     private final String repositoryName;
 
+    /** Wires the reused repositories/services and the configured repository id and name. */
     public CmisService(
             FolderRepository folderRepository,
             DocumentRepository documentRepository,
@@ -85,6 +86,11 @@ public class CmisService {
         return repositories;
     }
 
+    /**
+     * getRepositoryInfo: repository metadata and capabilities for the given id.
+     *
+     * @throws CmisException if the requested repository id is not this repository
+     */
     public Map<String, Object> getRepositoryInfo(String requestedRepositoryId) {
         requireRepository(requestedRepositoryId);
         Map<String, Object> info = new LinkedHashMap<>();
@@ -103,11 +109,22 @@ public class CmisService {
 
     // ---- reads ------------------------------------------------------------
 
+    /**
+     * getObject: resolves a folder or active document by id into its CMIS representation.
+     *
+     * @throws CmisException if the object is missing or the user lacks read permission
+     */
     public Map<String, Object> getObject(String requestedRepositoryId, String objectId, CurrentUser user) {
         requireRepository(requestedRepositoryId);
         return resolveObject(objectId, user);
     }
 
+    /**
+     * getChildren: the readable folders and active documents under a folder, paged
+     * by {@code skipCount}/{@code maxItems}. Only entries the user may read are included.
+     *
+     * @throws CmisException if the folder is missing or unreadable
+     */
     public Map<String, Object> getChildren(
             String requestedRepositoryId,
             String folderId,
@@ -143,6 +160,12 @@ public class CmisService {
         return result;
     }
 
+    /**
+     * getObjectParents: the single parent folder of a folder or document, or an
+     * empty list for the root.
+     *
+     * @throws CmisException if the object is missing or unreadable
+     */
     public List<Map<String, Object>> getParents(
             String requestedRepositoryId, String objectId, CurrentUser user) {
         requireRepository(requestedRepositoryId);
@@ -185,6 +208,13 @@ public class CmisService {
 
     // ---- query ------------------------------------------------------------
 
+    /**
+     * query: runs a restricted CMIS-SQL statement over the RBAC-enforced search
+     * index. Only {@code CONTAINS('...')} full-text and {@code cmis:name = '...'}
+     * predicates are supported.
+     *
+     * @throws CmisException if the statement is blank or uses an unsupported predicate
+     */
     public Map<String, Object> query(
             String requestedRepositoryId,
             String statement,
@@ -225,6 +255,12 @@ public class CmisService {
 
     // ---- writes -----------------------------------------------------------
 
+    /**
+     * createFolder: creates a folder under {@code parentId} from CMIS properties
+     * (requires {@code cmis:name}), delegating RBAC and validation to the folder service.
+     *
+     * @throws CmisException translated from any {@link ApiException} the folder service raises
+     */
     public Map<String, Object> createFolder(
             String requestedRepositoryId, String parentId, Map<String, String> properties, CurrentUser user) {
         requireRepository(requestedRepositoryId);
@@ -249,6 +285,12 @@ public class CmisService {
         }
     }
 
+    /**
+     * createDocument: uploads a new document into {@code parentId} (or the root when
+     * absent) from the content stream and CMIS properties (requires {@code cmis:name}).
+     *
+     * @throws CmisException translated from any {@link ApiException} the document service raises
+     */
     public Map<String, Object> createDocument(
             String requestedRepositoryId,
             String parentId,
@@ -276,6 +318,11 @@ public class CmisService {
         }
     }
 
+    /**
+     * setContentStream: replaces a document's content and returns its refreshed representation.
+     *
+     * @throws CmisException translated from any {@link ApiException} the document service raises
+     */
     public Map<String, Object> setContentStream(
             String requestedRepositoryId, String objectId, MultipartFile content, CurrentUser user) {
         requireRepository(requestedRepositoryId);
@@ -287,6 +334,12 @@ public class CmisService {
         }
     }
 
+    /**
+     * delete: soft-deletes a document or removes an empty non-root folder, subject to
+     * DELETE permission. Deleting the root or a non-empty folder is a constraint violation.
+     *
+     * @throws CmisException on missing object, denied permission, or a constraint violation
+     */
     public void deleteObject(String requestedRepositoryId, String objectId, CurrentUser user) {
         requireRepository(requestedRepositoryId);
         String id = notBlank(objectId);

@@ -4,6 +4,14 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.List;
 
+/**
+ * Access-control list embedded in a {@link Folder} (and in
+ * {@link de.hof.dms.domain.DocumentRecord}). It names the {@code owner} and
+ * owning department, and lists the users, roles and departments allowed access
+ * together with the concrete permission flags in {@link FolderAccess}. When
+ * {@code inheritFromParent} is {@code true} the effective permissions are
+ * derived from the parent folder rather than from this list.
+ */
 public class FolderAcl {
 
     private String owner;

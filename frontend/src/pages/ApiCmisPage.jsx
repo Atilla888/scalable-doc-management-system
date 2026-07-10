@@ -1,3 +1,9 @@
+/**
+ * @module pages/ApiCmisPage
+ * Static documentation page describing the expected REST/CMIS integration
+ * surface and the frontend contract while the backend is built.
+ */
+
 const endpoints = [
   { method: "GET", path: "/api/auth/me", description: "Current user profile and roles" },
   { method: "GET", path: "/api/folders", description: "List folder tree entries" },
@@ -6,6 +12,10 @@ const endpoints = [
   { method: "GET", path: "/cmis/repository", description: "Repository information for CMIS clients" },
 ];
 
+/**
+ * Renders the API / CMIS integration documentation page.
+ * @returns {JSX.Element}
+ */
 const ApiCmisPage = () => {
   return (
     <div className="space-y-6">

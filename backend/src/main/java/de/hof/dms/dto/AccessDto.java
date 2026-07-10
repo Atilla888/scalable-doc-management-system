@@ -2,6 +2,12 @@ package de.hof.dms.dto;
 
 import de.hof.dms.domain.FolderAccess;
 
+/**
+ * API-layer view of the permission flags in {@link FolderAccess} (read, create,
+ * update, delete, managePermissions). Carried inside {@link AclDto} and mapped
+ * to/from the domain object via {@link #from(FolderAccess)} and
+ * {@link #toAccess()}.
+ */
 public record AccessDto(
         boolean read,
         boolean create,

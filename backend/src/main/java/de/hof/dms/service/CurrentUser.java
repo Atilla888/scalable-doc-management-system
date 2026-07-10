@@ -6,6 +6,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Immutable snapshot of the authenticated caller extracted from the OIDC access
+ * token, exposing the identity and realm roles that the RBAC and service layers
+ * use to make authorization decisions.
+ */
 public record CurrentUser(
         String subject,
         String username,
@@ -13,6 +18,11 @@ public record CurrentUser(
         String department,
         List<String> roles) {
 
+    /**
+     * Builds a {@code CurrentUser} from a Keycloak JWT, falling back to the
+     * subject when no {@code preferred_username} claim is present and flattening
+     * the realm roles from {@code realm_access}.
+     */
     public static CurrentUser fromJwt(Jwt jwt) {
         String username = jwt.getClaimAsString("preferred_username");
         if (username == null || username.isBlank()) {

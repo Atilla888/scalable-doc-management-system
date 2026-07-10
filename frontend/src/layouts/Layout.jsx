@@ -1,13 +1,26 @@
+/**
+ * @module layouts/Layout
+ * Authenticated app shell: sidebar, top bar with global search and user menu,
+ * and an <Outlet> for the routed page content.
+ */
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
 
+/**
+ * Shared layout for all authenticated pages.
+ * @returns {JSX.Element}
+ */
 const Layout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const displayName = user?.preferred_username ?? user?.name ?? "User";
 
+  /**
+   * Navigates to the search page on Enter with a non-empty query.
+   * @param {React.KeyboardEvent<HTMLInputElement>} e Keydown event.
+   */
   function handleSearch(e) {
     if (e.key === "Enter" && e.target.value.trim()) {
       navigate(`/search?q=${encodeURIComponent(e.target.value.trim())}`);

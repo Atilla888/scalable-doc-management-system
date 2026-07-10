@@ -21,11 +21,13 @@ import java.util.Map;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class CmisExceptionHandler {
 
+    /** Renders a {@link CmisException} as the CMIS Browser-binding JSON error body. */
     @ExceptionHandler(CmisException.class)
     public ResponseEntity<Map<String, Object>> handleCmis(CmisException ex) {
         return body(ex.getFault(), ex.getMessage());
     }
 
+    /** Translates an {@link ApiException} from a reused service into the equivalent CMIS fault response. */
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Map<String, Object>> handleApi(ApiException ex) {
         CmisException translated = CmisException.fromApi(ex);

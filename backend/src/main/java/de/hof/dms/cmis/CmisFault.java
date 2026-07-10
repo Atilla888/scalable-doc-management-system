@@ -24,10 +24,12 @@ public enum CmisFault {
         this.status = status;
     }
 
+    /** Returns the CMIS exception name placed in the {@code "exception"} field of the error body. */
     public String exceptionName() {
         return exceptionName;
     }
 
+    /** Returns the HTTP status the CMIS Browser binding maps this fault to. */
     public HttpStatus status() {
         return status;
     }

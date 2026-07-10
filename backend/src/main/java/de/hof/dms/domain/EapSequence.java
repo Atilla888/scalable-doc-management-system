@@ -4,6 +4,12 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+/**
+ * Counter document backing EAP-number generation, stored in the MongoDB
+ * {@code eap_sequences} collection. Each record holds the next sequence value
+ * ({@code seq}) for a given {@code category}/{@code department}/{@code year}
+ * combination, so unique EAP numbers can be allocated atomically.
+ */
 @Document(collection = "eap_sequences")
 public class EapSequence {
 

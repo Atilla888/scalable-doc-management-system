@@ -1,5 +1,10 @@
 package de.hof.dms.domain;
 
+/**
+ * The set of permission flags granted by a {@link FolderAcl}: read, create,
+ * update, delete and managePermissions. Embedded inside {@code FolderAcl} and
+ * mirrored to the API layer by {@link de.hof.dms.dto.AccessDto}.
+ */
 public class FolderAccess {
 
     private boolean read;

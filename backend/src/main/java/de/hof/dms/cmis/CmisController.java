@@ -43,6 +43,7 @@ public class CmisController {
 
     private final CmisService cmisService;
 
+    /** Creates the controller with the CMIS service that implements the operations. */
     public CmisController(CmisService cmisService) {
         this.cmisService = cmisService;
     }

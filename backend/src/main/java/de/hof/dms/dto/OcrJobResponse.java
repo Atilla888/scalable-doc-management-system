@@ -4,6 +4,12 @@ import de.hof.dms.domain.DocumentRecord;
 
 import java.time.Instant;
 
+/**
+ * View of a document's OCR/text-extraction job for the admin OCR monitoring
+ * endpoint: the source document identity plus job state — {@code ocrStatus},
+ * {@code extractionMethod}, {@code retryCount} and any {@code ocrError}. Built
+ * from a {@link DocumentRecord} via {@link #from(DocumentRecord)}.
+ */
 public record OcrJobResponse(
         String id,
         String title,

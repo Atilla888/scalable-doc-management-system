@@ -15,6 +15,13 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Assembles the administrator dashboard overview: the Keycloak user/role
+ * directory, aggregate document and folder counts, a summary of the permission
+ * scopes, and live health of the backing components (Keycloak, MongoDB). Each
+ * component is probed defensively so a single outage degrades gracefully rather
+ * than failing the whole overview.
+ */
 @Service
 @Profile("!no-mongo")
 public class AdminOverviewService {
@@ -35,6 +42,10 @@ public class AdminOverviewService {
         this.mongoTemplate = mongoTemplate;
     }
 
+    /**
+     * Builds the full admin overview, collecting the user directory, document and
+     * folder counts, permission scopes, and per-component health status.
+     */
     public AdminOverviewResponse getOverview() {
         List<ComponentHealth> health = new ArrayList<>();
         health.add(new ComponentHealth("Backend API", "UP", "Administrative API is responding"));

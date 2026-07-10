@@ -8,11 +8,18 @@ public class CmisException extends RuntimeException {
 
     private final transient CmisFault fault;
 
+    /**
+     * Creates a CMIS fault.
+     *
+     * @param fault   the CMIS fault type that determines the exception name and HTTP status
+     * @param message human-readable detail rendered in the JSON error body
+     */
     public CmisException(CmisFault fault, String message) {
         super(message);
         this.fault = fault;
     }
 
+    /** Returns the fault type used to render the CMIS JSON error response. */
     public CmisFault getFault() {
         return fault;
     }

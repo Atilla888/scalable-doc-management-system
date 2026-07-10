@@ -46,11 +46,15 @@ SERVER_SELECTION_TIMEOUT_MS = 5000
 
 
 def _now():
+    """Return the current time as a timezone-aware UTC datetime."""
     return datetime.now(timezone.utc)
 
 
 class Worker:
+    """Polls MongoDB for pending documents, extracts their text, and stores results."""
+
     def __init__(self, config: Config):
+        """Initialize the worker with its config; connections are opened later."""
         self.config = config
         self._running = True
         self.client = None
@@ -60,6 +64,11 @@ class Worker:
     # -- lifecycle ---------------------------------------------------------
 
     def connect(self) -> None:
+        """Open the MongoDB connection and resolve the documents collection and GridFS.
+
+        Raises:
+            ValueError: If MONGODB_URI does not include a database name.
+        """
         self.client = MongoClient(
             self.config.mongodb_uri,
             serverSelectionTimeoutMS=SERVER_SELECTION_TIMEOUT_MS,
@@ -73,10 +82,16 @@ class Worker:
         self.fs = gridfs.GridFS(db)
 
     def stop(self, *_args) -> None:
+        """Signal the run loop to stop after the current cycle (signal handler)."""
         log.info("Shutdown signal received; finishing current cycle")
         self._running = False
 
     def run(self) -> None:
+        """Run the poll loop: requeue stale jobs, drain the pending queue, then sleep.
+
+        Connects on first use if needed and runs until a shutdown signal is received.
+        MongoDB errors and unexpected exceptions are caught so the loop never dies.
+        """
         if self.documents is None:
             self.connect()
         log.info(
@@ -169,6 +184,11 @@ class Worker:
         return True
 
     def _ocr_document(self, doc) -> str:
+        """Load the document's file from GridFS, enforce guardrails, and extract text.
+
+        Raises:
+            OcrError: If the file id is missing, invalid, absent, or exceeds a guardrail.
+        """
         file_id = doc.get("gridfs_file_id")
         if not file_id:
             raise OcrError("Document has no gridfs_file_id")
@@ -201,6 +221,7 @@ class Worker:
                 raise OcrError(f"PDF exceeds page limit ({pages} pages > {max_pages})")
 
     def _mark_failed(self, doc_id, error: Exception) -> None:
+        """Mark a document 'failed', recording the error and bumping retry_count."""
         log.warning("OCR failed for %s: %s", doc_id, error)
         try:
             self.documents.update_one(
@@ -231,6 +252,7 @@ class Worker:
 
 
 def main() -> None:
+    """Configure logging, build the worker, install signal handlers, and run it."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",

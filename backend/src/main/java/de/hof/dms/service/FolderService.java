@@ -24,6 +24,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Manages the folder tree: viewing, listing, creating, renaming/moving, and
+ * deleting folders. Folders use a materialized {@code path} so a whole subtree
+ * can be rewritten or removed in one pass. Every operation enforces access
+ * through {@link PermissionService}, and listings only ever return folders and
+ * documents the caller may read.
+ */
 @Service
 @Profile("!no-mongo")
 public class FolderService {
@@ -46,6 +53,10 @@ public class FolderService {
         this.permissionService = permissionService;
     }
 
+    /**
+     * Returns the view of the root folder (breadcrumb, readable subfolders, and
+     * readable documents). Requires <b>read</b> on the root folder.
+     */
     public FolderViewResponse getRootView(CurrentUser user) {
         Folder root =
                 folderRepository
@@ -57,6 +68,12 @@ public class FolderService {
         return buildView(root, user);
     }
 
+    /**
+     * Returns the view of a folder (breadcrumb, readable subfolders, and readable
+     * documents). Requires <b>read</b> on the folder.
+     *
+     * @throws ApiException with 404 if the folder does not exist
+     */
     public FolderViewResponse getView(String folderId, CurrentUser user) {
         Folder folder =
                 folderRepository
@@ -87,6 +104,12 @@ public class FolderService {
                 .toList();
     }
 
+    /**
+     * Lists the child folders of {@code parentId} (or of the root folder when
+     * {@code parentId} is blank), restricted to folders the caller may <b>read</b>,
+     * with pagination applied after the permission filter so the totals reflect
+     * what the caller can actually see. Requires <b>read</b> on the parent folder.
+     */
     public FolderPage listFolders(String parentId, int page, int size, CurrentUser user) {
         Folder parent = resolveParent(parentId);
         permissionService.requireFolder(user, parent, PermissionService.Action.READ);

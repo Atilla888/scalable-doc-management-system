@@ -15,6 +15,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Read-only gateway to the Keycloak Admin REST API. Authenticates with the
+ * client-credentials grant and loads the realm's DMS users and {@code dms_}
+ * roles for the administrator overview. Only DMS-scoped roles and non-service
+ * accounts are surfaced.
+ */
 @Service
 public class KeycloakAdminService {
 
@@ -40,6 +46,13 @@ public class KeycloakAdminService {
         this.clientSecret = clientSecret;
     }
 
+    /**
+     * Loads the realm directory (DMS users and roles) from Keycloak in a single
+     * snapshot.
+     *
+     * @throws IllegalStateException if the admin client secret is unconfigured or
+     *     Keycloak returns an invalid response
+     */
     public DirectorySnapshot loadDirectory() {
         String accessToken = requestAccessToken();
         List<RoleSummary> roles = loadRoles(accessToken);
@@ -184,5 +197,6 @@ public class KeycloakAdminService {
                 : value;
     }
 
+    /** Immutable pairing of the realm's DMS users and roles returned by a directory load. */
     public record DirectorySnapshot(List<UserSummary> users, List<RoleSummary> roles) {}
 }

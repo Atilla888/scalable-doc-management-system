@@ -1,6 +1,16 @@
+/**
+ * @module components/FolderContents
+ * Table listing a folder's subfolders and documents, with optional management
+ * actions (rename/move/delete) for privileged users.
+ */
 import { Link } from "react-router-dom";
 import OcrStatusBadge from "./OcrStatusBadge";
 
+/**
+ * Formats an ISO date/time string for display, falling back gracefully.
+ * @param {string} [value] Date value.
+ * @returns {string} Localized string, the raw value, or "—".
+ */
 function formatDate(value) {
   if (!value) return "—";
   try {
@@ -14,6 +24,13 @@ function formatDate(value) {
  * Renders the subfolders and documents the backend returned for a folder.
  * Nothing is filtered client-side — the list reflects exactly what the API
  * allowed the current user to see.
+ * @param {Object} props
+ * @param {{subfolders?: Array<Object>, documents?: Array<Object>}} props.view Folder view payload.
+ * @param {boolean} [props.canManage=false] Whether to show folder management actions.
+ * @param {(folder: Object) => void} [props.onRename] Rename handler.
+ * @param {(folder: Object) => void} [props.onMove] Move handler.
+ * @param {(folder: Object) => void} [props.onDelete] Delete handler.
+ * @returns {JSX.Element}
  */
 const FolderContents = ({ view, canManage = false, onRename, onMove, onDelete }) => {
   const subfolders = view?.subfolders ?? [];

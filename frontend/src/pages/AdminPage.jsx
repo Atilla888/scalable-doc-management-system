@@ -1,12 +1,28 @@
+/**
+ * @module pages/AdminPage
+ * Administration console showing Keycloak users, realm roles, permission scopes,
+ * component health, and aggregate metrics from the backend overview endpoint.
+ */
 import { getAdminOverview } from "../api/admin";
 import ApiErrorPanel from "../components/ApiErrorPanel";
 import LoadingState from "../components/LoadingState";
 import useApiResource from "../hooks/useApiResource";
 
+/**
+ * Coerces a value to an array (empty array if it is not one).
+ * @param {*} value Candidate value.
+ * @returns {Array<*>}
+ */
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+/**
+ * Health status pill: green for "UP", red otherwise.
+ * @param {Object} props
+ * @param {string} [props.status] Component status.
+ * @returns {JSX.Element}
+ */
 function StatusBadge({ status }) {
   const healthy = status === "UP";
   return (
@@ -22,6 +38,13 @@ function StatusBadge({ status }) {
   );
 }
 
+/**
+ * Full-width placeholder row shown when a table has no data.
+ * @param {Object} props
+ * @param {number} props.columns Number of columns to span.
+ * @param {string} props.message Message to display.
+ * @returns {JSX.Element}
+ */
 function EmptyRow({ columns, message }) {
   return (
     <tr>
@@ -32,6 +55,10 @@ function EmptyRow({ columns, message }) {
   );
 }
 
+/**
+ * Admin console page; fetches and renders the system administration overview.
+ * @returns {JSX.Element}
+ */
 const AdminPage = () => {
   const { data, error, loading, reload } = useApiResource(
     (signal) => getAdminOverview(signal),

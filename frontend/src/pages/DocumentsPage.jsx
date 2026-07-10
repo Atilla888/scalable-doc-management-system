@@ -1,3 +1,9 @@
+/**
+ * @module pages/DocumentsPage
+ * Static mock of the document-hierarchy browser (folder tree + contents table)
+ * used as a design placeholder before the live folder pages were wired up.
+ */
+
 const folderTree = [
   {
     label: "Root",
@@ -30,6 +36,13 @@ const documents = [
   { type: "Doc", name: "Appeal_Letter.pdf", eapNum: "EAP-12.04.07", docType: "Scan", ocr: "FAILED", updated: "2026-04-17" },
 ];
 
+/**
+ * Recursively renders a folder-tree node and its children.
+ * @param {Object} props
+ * @param {{label: string, children?: Array<Object>}} props.node Tree node.
+ * @param {number} [props.level=0] Nesting depth (controls indentation).
+ * @returns {JSX.Element}
+ */
 const TreeNode = ({ node, level = 0 }) => {
   const hasChildren = node.children?.length > 0;
 
@@ -50,6 +63,10 @@ const TreeNode = ({ node, level = 0 }) => {
   );
 };
 
+/**
+ * Static document-hierarchy browser mockup.
+ * @returns {JSX.Element}
+ */
 const DocumentsPage = () => {
   return (
     <div className="space-y-5">

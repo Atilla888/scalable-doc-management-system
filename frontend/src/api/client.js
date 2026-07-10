@@ -1,3 +1,8 @@
+/**
+ * @module api/client
+ * Central authenticated fetch client: attaches the Keycloak bearer token,
+ * normalizes error responses into {@link ApiError}, and exposes REST helpers.
+ */
 import keycloak from "../keycloak";
 import { API_BASE_URL } from "../config";
 import { clearSessionAndGoToLogin, redirectToLoginOnce } from "../auth/keycloakAuth";
@@ -28,6 +33,12 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Ensures a valid token and returns the Authorization header.
+ * Refreshes the token if it expires within 30s; clears the session on failure.
+ * @returns {Promise<Object>} Header object with the Bearer token (or empty).
+ * @throws {ApiError} 401 when not signed in or the session expired.
+ */
 async function authHeader() {
   if (!keycloak.authenticated) {
     throw new ApiError(401, "Not signed in");
@@ -41,6 +52,12 @@ async function authHeader() {
   return keycloak.token ? { Authorization: `Bearer ${keycloak.token}` } : {};
 }
 
+/**
+ * Builds an {@link ApiError} from a failed Response, extracting the backend's
+ * `detail`/`message`/`error` field or falling back to the status text.
+ * @param {Response} response The failed fetch Response.
+ * @returns {Promise<ApiError>}
+ */
 async function parseError(response) {
   let detail;
   let payload;
@@ -53,6 +70,18 @@ async function parseError(response) {
   return new ApiError(response.status, detail, payload);
 }
 
+/**
+ * Performs an authenticated fetch and throws on non-2xx responses. Handles 401
+ * by redirecting to login. JSON-encodes the body unless it is FormData.
+ * @param {string} path Request path appended to the API base URL.
+ * @param {Object} [options]
+ * @param {string} [options.method="GET"] HTTP method.
+ * @param {*} [options.body] Request body (FormData sent as-is, else JSON).
+ * @param {Object} [options.headers] Additional request headers.
+ * @param {AbortSignal} [options.signal] Signal to abort the request.
+ * @returns {Promise<Response>} The raw fetch Response.
+ * @throws {ApiError} On any non-ok response.
+ */
 async function request(path, { method = "GET", body, headers = {}, signal } = {}) {
   const auth = await authHeader();
   const isFormData = body instanceof FormData;
@@ -81,6 +110,10 @@ async function request(path, { method = "GET", body, headers = {}, signal } = {}
   return response;
 }
 
+/**
+ * Authenticated REST client. Each method issues a request and parses the JSON
+ * response (returning `null` for 204 No Content where applicable).
+ */
 export const apiClient = {
   async get(path, options) {
     const response = await request(path, { ...options, method: "GET" });

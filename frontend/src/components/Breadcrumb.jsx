@@ -1,8 +1,15 @@
+/**
+ * @module components/Breadcrumb
+ * Clickable folder-trail navigation.
+ */
 import { Link } from "react-router-dom";
 
 /**
- * Renders a clickable folder trail. The last entry is the current folder.
- * entries: [{ id, name }]
+ * Renders a clickable folder trail. All but the last entry link to their
+ * folder; the last entry is the current folder and is rendered as plain text.
+ * @param {Object} props
+ * @param {Array<{id: string, name: string}>} [props.entries=[]] Ordered trail from root to current.
+ * @returns {JSX.Element|null} Null when there are no entries.
  */
 const Breadcrumb = ({ entries = [] }) => {
   if (entries.length === 0) return null;

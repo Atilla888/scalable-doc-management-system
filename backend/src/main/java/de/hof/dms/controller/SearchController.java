@@ -18,6 +18,13 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 
+/**
+ * REST endpoint for full-text and faceted document search under {@code /api/search}.
+ *
+ * <p>Requires an authenticated user; results are scoped to what the resolved
+ * {@link CurrentUser} may see by {@link SearchService}. Only active when a MongoDB backend
+ * is present (profile {@code !no-mongo}).
+ */
 @RestController
 @RequestMapping("/api/search")
 @Profile("!no-mongo")
@@ -29,6 +36,28 @@ public class SearchController {
         this.searchService = searchService;
     }
 
+    /**
+     * Executes a document search using the given term and optional facets, returning only
+     * results visible to the current user.
+     *
+     * <p>The search term may be supplied via {@code query} (spec) or {@code q} (legacy
+     * frontend); {@code query} takes precedence. Date filters accept {@code yyyy-MM-dd} and
+     * are widened to cover the full day in UTC.
+     *
+     * @param query primary search term
+     * @param q legacy search term, used only when {@code query} is blank
+     * @param type optional document-type facet
+     * @param department optional department facet
+     * @param folder optional folder facet
+     * @param status optional status facet
+     * @param dateFrom optional inclusive lower date bound ({@code yyyy-MM-dd})
+     * @param dateTo optional inclusive upper date bound ({@code yyyy-MM-dd})
+     * @param sort optional sort specifier
+     * @param page zero-based page index
+     * @param limit page size
+     * @param jwt the current user's JWT
+     * @return the matching search results
+     */
     @GetMapping
     public SearchResponse search(
             @RequestParam(value = "query", required = false) String query,

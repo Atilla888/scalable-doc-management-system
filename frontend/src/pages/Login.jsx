@@ -1,7 +1,16 @@
+/**
+ * @module pages/Login
+ * Login page that redirects authenticated users to the dashboard and otherwise
+ * offers a "Sign in with Keycloak" action.
+ */
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { KEYCLOAK_REALM, KEYCLOAK_URL, SHOW_DEMO_USERS } from '../config'
 
+/**
+ * Renders the login screen.
+ * @returns {JSX.Element}
+ */
 const Login = () => {
   const { initialized, authenticated, keycloak } = useAuth()
 
