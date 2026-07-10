@@ -16,6 +16,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.ZipInputStream;
 
+/**
+ * Validates uploaded files before they are stored. Enforces the configured
+ * size limit, an allow-list of content types, a matching file extension, a safe
+ * file name, and magic-byte signatures (including DOCX ZIP structure) so the
+ * declared content type cannot be spoofed.
+ */
 @Service
 public class UploadValidationService {
 
@@ -25,6 +31,8 @@ public class UploadValidationService {
                     "image/png", Set.of("png"),
                     "image/jpeg", Set.of("jpg", "jpeg"),
                     "text/plain", Set.of("txt"),
+                    "application/xml", Set.of("xml"),
+                    "application/json", Set.of("json"),
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                             Set.of("docx"));
 
@@ -42,6 +50,13 @@ public class UploadValidationService {
         this.maxFileSize = maxFileSize.toBytes();
     }
 
+    /**
+     * Validates a multipart upload against size, content-type, extension, file
+     * name, and magic-byte signature rules.
+     *
+     * @return the sanitized file name and normalized content type
+     * @throws ApiException with 400/413/415 describing which rule the upload failed
+     */
     public ValidatedUpload validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "file is required");
@@ -122,7 +137,8 @@ public class UploadValidationService {
                             && header[2] == (byte) 0xFF;
             case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ->
                     isDocx(file);
-            case "text/plain" -> header.length > 0 && containsNoNullByte(header);
+            case "text/plain", "application/xml", "application/json" ->
+                    header.length > 0 && containsNoNullByte(header);
             default -> false;
         };
     }
@@ -189,5 +205,6 @@ public class UploadValidationService {
         return contentType.isBlank() ? "missing" : contentType;
     }
 
+    /** The sanitized file name and normalized content type of a validated upload. */
     public record ValidatedUpload(String fileName, String contentType) {}
 }

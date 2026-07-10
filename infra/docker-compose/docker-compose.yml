@@ -91,7 +91,7 @@ services:
       - DMS_CORS_ALLOWED_ORIGINS=${DMS_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:80}
       - DMS_MAX_FILE_SIZE=${DMS_MAX_FILE_SIZE:-50MB}
       - DMS_MAX_REQUEST_SIZE=${DMS_MAX_REQUEST_SIZE:-55MB}
-      - DMS_ALLOWED_UPLOAD_TYPES=${DMS_ALLOWED_UPLOAD_TYPES:-application/pdf,image/png,image/jpeg,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document}
+      - DMS_ALLOWED_UPLOAD_TYPES=${DMS_ALLOWED_UPLOAD_TYPES:-application/pdf,image/png,image/jpeg,text/plain,application/xml,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document}
     depends_on:
       keycloak:
         condition: service_healthy

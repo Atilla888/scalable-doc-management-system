@@ -22,6 +22,8 @@ class UploadValidationServiceTest {
                         "image/png",
                         "image/jpeg",
                         "text/plain",
+                        "application/xml",
+                        "application/json",
                         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     },
                     DataSize.ofKilobytes(10));
@@ -49,6 +51,50 @@ class UploadValidationServiceTest {
                         "malware.pdf",
                         "application/pdf",
                         "MZ executable".getBytes(StandardCharsets.US_ASCII));
+
+        assertThatThrownBy(() -> validator.validate(file))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("does not match");
+    }
+
+    @Test
+    void acceptsXmlWhenExtensionTypeAndSignatureMatch() {
+        MockMultipartFile file =
+                new MockMultipartFile(
+                        "file",
+                        "record.xml",
+                        "application/xml",
+                        "<?xml version=\"1.0\"?><root/>".getBytes(StandardCharsets.UTF_8));
+
+        UploadValidationService.ValidatedUpload result = validator.validate(file);
+
+        assertThat(result.fileName()).isEqualTo("record.xml");
+        assertThat(result.contentType()).isEqualTo("application/xml");
+    }
+
+    @Test
+    void acceptsJsonWhenExtensionTypeAndSignatureMatch() {
+        MockMultipartFile file =
+                new MockMultipartFile(
+                        "file",
+                        "record.json",
+                        "application/json",
+                        "{\"key\":\"value\"}".getBytes(StandardCharsets.UTF_8));
+
+        UploadValidationService.ValidatedUpload result = validator.validate(file);
+
+        assertThat(result.fileName()).isEqualTo("record.json");
+        assertThat(result.contentType()).isEqualTo("application/json");
+    }
+
+    @Test
+    void rejectsBinaryContentDeclaredAsJson() {
+        MockMultipartFile file =
+                new MockMultipartFile(
+                        "file",
+                        "payload.json",
+                        "application/json",
+                        new byte[] {0x7B, 0x00, 0x01, 0x02});
 
         assertThatThrownBy(() -> validator.validate(file))
                 .isInstanceOf(ApiException.class)
