@@ -1,0 +1,22 @@
+# Normalize line endings so shell scripts stay LF on every checkout. A shell script
+# with CRLF endings fails on Linux with "bad interpreter", which would break the
+# Debian 13 install, so force LF on scripts and text regardless of the host.
+* text=auto eol=lf
+
+*.sh    text eol=lf
+mvnw    text eol=lf
+Dockerfile      text eol=lf
+*.Dockerfile    text eol=lf
+
+# Windows-only helpers keep CRLF.
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+
+# Binary assets are never converted.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.jar   binary
+*.pdf   binary
