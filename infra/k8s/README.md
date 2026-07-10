@@ -86,6 +86,12 @@ Keep that SSH window open while you're using the app. The frontend is then at
 `http://localhost:5173`, Keycloak at `http://localhost:8080`, and the API and CMIS
 endpoints at `http://localhost:8081`.
 
+Running the VM in VirtualBox with NAT networking (no directly reachable VM IP)? The
+same tunnels work through a forwarded SSH port — the setup and the `-p` variant of
+this command are explained in
+[`docs/test-environment-setup.md`](../../docs/test-environment-setup.md) (section 3
+and 7.3).
+
 Signing in goes through Keycloak. The realm import provisions the four demo users
 (`admin`, `manager`, `contributor`, `viewer` — all `@dms.local`) with the password from
 the `demo-user-password` Secret key, and the bootstrap Job guarantees manager,
