@@ -4,7 +4,8 @@ FROM node:lts-trixie-slim AS dev
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+# npm ci installs exactly the committed lockfile (reproducible, fails on drift)
+RUN npm ci
 
 COPY . .
 
@@ -18,7 +19,7 @@ FROM node:lts-trixie-slim AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 RUN npm run build
