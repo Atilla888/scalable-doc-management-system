@@ -85,7 +85,7 @@ const Login = () => {
                     <li>manager@dms.local</li>
                     <li>contributor@dms.local</li>
                     <li>viewer@dms.local</li>
-                    <li className="pt-1 text-text-secondary/80">Password: changeme_dev (dev only)</li>
+                    <li className="pt-1 text-text-secondary/80">Password: DMS_DEMO_USER_PASSWORD from your .env (dev only)</li>
                   </ul>
                 </div>
               )}

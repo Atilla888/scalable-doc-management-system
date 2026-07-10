@@ -30,22 +30,22 @@ host ports free: **5173** (frontend), **8080** and **9000** (Keycloak), **8081**
 **27018** (MongoDB).
 
 The stack has **no fallback passwords**: it refuses to start until every required secret is set.
-First-time setup:
+The quickest first-time setup writes a `.env` with strong random secrets and prints the demo
+login (the Compose counterpart to the Kubernetes `generate-secrets.sh`):
 
 ```bash
 cd infra/docker-compose
+bash generate-env.sh
+```
+
+Prefer to set them by hand? Copy the template and fill the five blank secrets yourself (any strong
+value works, e.g. `openssl rand -hex 24`):
+
+```bash
 cp .env.example .env
 ```
 
-Open `.env` and fill in the five required secrets (blank by default). Any strong value works;
-generate them with (run once per secret and paste each value into `.env`; if `openssl` is
-unavailable, any long random string will do):
-
-```bash
-openssl rand -hex 24
-```
-
-Set these five keys:
+The five required keys are:
 
 - `KEYCLOAK_ADMIN_PASSWORD`
 - `MONGO_ROOT_PASSWORD`
@@ -145,7 +145,10 @@ renders exactly what the backend returns and relies on 401/403 responses.
 
 ## Demo accounts (development only)
 
-The demo users share the password you set in `DMS_DEMO_USER_PASSWORD`. Use it only locally.
+All four demo users share the value of `DMS_DEMO_USER_PASSWORD` from your `.env`. If you ran
+`generate-env.sh` it is random — read it from the script's output (the `Demo login (all demo
+users): …` line) or from `infra/docker-compose/.env` at any time. If you filled `.env` by hand,
+it is whatever you set. Use it only locally.
 
 - **admin@dms.local** — role `dms_admin`, no department.
 - **manager@dms.local** — role `dms_department_manager`, department `ITDLZ`.
