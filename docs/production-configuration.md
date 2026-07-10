@@ -49,7 +49,8 @@ For a production Keycloak installation:
    provisioning. Remove those variables after the permanent administrator exists.
 3. Use a persistent supported database and back it up. Do not rely on the container filesystem.
 4. Import the production realm template or reproduce it through managed infrastructure configuration.
-5. Keep the `dms-admin-api` service account limited to `query-users`, `view-users`, and `view-realm`.
+5. Keep the `dms-admin-api` service account limited to `query-users`, `view-users`, `view-realm`,
+   and `manage-users` (the last is required for department assignment — never grant `realm-admin`).
    Rotate its secret and update the backend secret atomically.
 6. Provision human users through the organization's identity provider or controlled administration.
    Assign one DMS realm role and the `department` attribute where applicable.

@@ -33,7 +33,17 @@ Any other path under `/api/**` requires authentication. Paths under `/api/admin/
 - `GET /api/admin/overview` — admin-only aggregate used by the AdminPage. Users, enabled state, realm roles, and departments come from the live Keycloak Admin API. Document/folder counts and MongoDB status come from the live database. Permission scopes mirror the actions enforced by `PermissionService`.
 - `GET /api/admin/ocr` and `POST /api/admin/ocr/{id}/retry` — list and retry OCR jobs.
 
-The backend uses the confidential `dms-admin-api` service account for read-only directory access. Its secret is supplied through `DMS_KEYCLOAK_ADMIN_CLIENT_SECRET`; it must never be exposed through frontend variables.
+#### Department registry
+
+Departments live in the MongoDB `departments` collection (`id`, `code`, `displayName`, `active`, `createdAt`, `updatedAt`). The normalized `code` (trimmed, upper-cased, `A-Z0-9_-`, 2–32 chars, unique) is the value carried by Keycloak user attributes, JWT `department` claims, and folder/document ACLs, so it is **immutable after creation** — rename the display name or deactivate instead. `ITDLZ` is seeded idempotently (by `scripts/mongo-init.js` on a fresh database and again by the backend at startup).
+
+- `GET /api/admin/departments` — list the registry, ordered by code.
+- `POST /api/admin/departments` — body `{ "code", "displayName"? }`. Returns `201`; a malformed code is `400`, a duplicate is `409`.
+- `PUT /api/admin/departments/{code}` — body `{ "displayName"?, "active"? }` (nulls keep current values). The code itself cannot be changed.
+- `DELETE /api/admin/departments/{code}` — `204` only while nothing references the code; if users, folders, documents, or ACLs still carry it the response is `409` (deactivate instead).
+- `PUT /api/admin/users/{userId}/department` — body `{ "department": "CODE" }` assigns, `{ "department": null }` removes. Only existing (`400` otherwise) and active (`409` otherwise) departments can be assigned; the change is written to the user's Keycloak `department` attribute via the `dms-admin-api` service account, so it appears in freshly issued tokens.
+
+The backend uses the confidential `dms-admin-api` service account for directory access and for maintaining the users' `department` attribute. It holds only the least-privilege `realm-management` roles `query-users`, `view-users`, `view-realm`, and `manage-users` — not `realm-admin`. Its secret is supplied through `DMS_KEYCLOAK_ADMIN_CLIENT_SECRET`; it must never be exposed through frontend variables.
 
 ### Folders and search
 
@@ -115,4 +125,13 @@ mvnw.cmd test
 
 On Linux or macOS: `./mvnw test`. Tests cover JWT role extraction, missing or invalid tokens (401), public `/health`, admin route protection, MongoDB initialization, EAP number generation, document upload/download/delete, and RBAC enforcement. The RBAC resolver matrix and inheritance walk are covered by `PermissionServiceTest` (pure unit, no MongoDB), and `403` enforcement (unauthorized read/download, unauthorized permission/metadata update) is covered by `DocumentApiIntegrationTest` against Compose MongoDB.
 
-MongoDB tests: `MongoInitializationLocalTest` connects to `mongodb://localhost:27017/dms` while Compose is running (recommended on Windows). `MongoInitializationTest` uses Testcontainers when the JVM can reach Docker; if those six tests are skipped but `docker ps` works, use the local test — Docker CLI and Testcontainers use different APIs on some Docker Desktop versions.
+MongoDB-backed integration tests (document/folder/search RBAC, CMIS, EAP numbers, Mongo init) gate themselves on a reachable, seeded MongoDB and self-skip otherwise (each gated class then reports `Tests run: 0`). They connect to `mongodb://localhost:27017/dms` without credentials by default — exactly the throwaway database the CI pipeline provides. To run them against the **Compose** MongoDB instead (published on `127.0.0.1:27018` with authentication), point them at it explicitly:
+
+```bash
+# from infra/docker-compose: docker compose up -d --wait mongodb
+cd backend
+DMS_TEST_MONGODB_URI="mongodb://dms_app:<MONGO_APP_PASSWORD from infra/docker-compose/.env>@localhost:27018/dms?authSource=dms" \
+  mvn test    # or ./mvnw test where the wrapper is set up
+```
+
+`MongoInitializationTest` additionally spins up its own `mongo:7` via Testcontainers and is skipped when the JVM cannot reach Docker (`@Testcontainers(disabledWithoutDocker = true)`); `MongoInitializationLocalTest` covers the same assertions against the configured local database.

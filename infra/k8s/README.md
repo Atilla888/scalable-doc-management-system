@@ -46,11 +46,26 @@ bash infra/k8s/deploy.sh
 Once that finishes, every pod should be `Running` and `READY`. If something is stuck
 on `Pending` or `CrashLoopBackOff`, see the end of this file.
 
+Between Keycloak and the backend, `deploy.sh` runs the **keycloak-bootstrap Job**
+(`03b-keycloak-bootstrap.yaml`, script from `infra/keycloak/bootstrap/` published as a
+ConfigMap — the same file the Compose stack runs). Keycloak ≥ 24 drops user attributes
+that the realm's User Profile does not declare, so after the realm import the Job
+declares the managed `department` attribute, re-applies `department=ITDLZ` to the
+manager/contributor/viewer demo users, and verifies the token mapper and the
+`dms-admin-api` service-account roles. It authenticates with the Keycloak admin
+credentials from `dms-secrets`, is idempotent (deploy.sh simply re-runs it on every
+deploy), and `deploy.sh` aborts — printing the Job logs — before the backend is applied
+if it fails, so the backend never serves traffic against an unconfigured realm.
+
 A note on the secrets: the real Secret never goes into Git. `generate-secrets.sh`
-writes it with fresh random passwords (Mongo root, the app user, Keycloak admin), and
-it's git-ignored and mode `600`. The only thing in the repo is `secrets.example.yaml`,
+writes it with fresh random passwords (Mongo root, the app user, Keycloak admin, the
+`dms-admin-api` client secret, and the demo users' login password), and it's
+git-ignored and mode `600`. The only thing in the repo is `secrets.example.yaml`,
 which just lists the keys. Mongo bakes the app password in on first init, so only
 regenerate on a clean cluster — and delete the Mongo volume first if you do.
+On a cluster whose `01-secrets.yaml` predates the department feature, add the two new
+keys (`keycloak-admin-client-secret`, `demo-user-password`) to the existing Secret by
+hand — regenerating everything would break the existing Mongo data.
 
 ## Reaching the app from your laptop
 
@@ -71,11 +86,15 @@ Keep that SSH window open while you're using the app. The frontend is then at
 `http://localhost:5173`, Keycloak at `http://localhost:8080`, and the API and CMIS
 endpoints at `http://localhost:8081`.
 
-Signing in goes through Keycloak. Provision users in the Keycloak admin console (or let
-them self-register) and give each one a DMS role — `dms_admin`,
-`dms_department_manager`, `dms_contributor`, or `dms_viewer` — which is what the backend
-authorizes against. The admin console itself uses the bootstrap admin from the
-generated Secret.
+Signing in goes through Keycloak. The realm import provisions the four demo users
+(`admin`, `manager`, `contributor`, `viewer` — all `@dms.local`) with the password from
+the `demo-user-password` Secret key, and the bootstrap Job guarantees manager,
+contributor, and viewer carry `department=ITDLZ`. Additional users can be provisioned
+in the Keycloak admin console (or self-register); give each one a DMS role —
+`dms_admin`, `dms_department_manager`, `dms_contributor`, or `dms_viewer` — which is
+what the backend authorizes against, and assign departments from the app's `/admin`
+page. The Keycloak admin console itself uses the bootstrap admin from the generated
+Secret.
 
 ## Checking it works
 
@@ -114,6 +133,12 @@ recommend, and the comment at the top of that file explains what host-based acce
 would take.
 
 ## When something's wrong
+
+If `deploy.sh` aborts at the bootstrap step, read the printed Job logs (or
+`kubectl -n dms logs job/keycloak-bootstrap`) — the script names the exact check that
+failed (missing realm, wrong admin credentials, missing user, …). It is safe to fix
+the cause and simply re-run `deploy.sh`. If demo users are missing their department
+or tokens lack the `department` claim, the same logs say why.
 
 If a pod is stuck on `ImagePullBackOff`, the image didn't make it into minikube —
 re-run `build-and-load.sh` and confirm with `minikube image ls | grep dms-`. If

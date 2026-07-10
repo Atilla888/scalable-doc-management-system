@@ -27,7 +27,9 @@ developer machine.
 
 **Prerequisites:** Docker with Docker Compose v2 (check with `docker compose version`), and these
 host ports free: **5173** (frontend), **8080** and **9000** (Keycloak), **8081** (backend), and
-**27018** (MongoDB).
+**27018** (MongoDB). Starting from a completely fresh Debian 13 machine? The step-by-step host
+setup (Docker, tests, and the optional kubectl + minikube path) is in
+[`docs/test-environment-setup.md`](docs/test-environment-setup.md).
 
 The stack has **no fallback passwords**: it refuses to start until every required secret is set.
 The quickest first-time setup writes a `.env` with strong random secrets and prints the demo
@@ -57,13 +59,29 @@ The five required keys are:
 Then bring the stack up:
 
 ```bash
-docker compose down -v      # wipe old volumes so realm import + Mongo init run cleanly
-docker compose up --build
+docker compose down -v --remove-orphans   # wipe old volumes so realm import + Mongo init run cleanly
+docker compose up -d --build --wait
 ```
 
 You do **not** configure Keycloak by hand — on startup Compose imports the `dms` realm from
 `infra/keycloak/dms-realm.json`, and `scripts/mongo-init.js` creates the collections, indexes,
-and the root folder `/` on first boot (empty volume).
+the root folder `/`, and the default `ITDLZ` department on first boot (empty volume).
+
+After Keycloak is healthy, the one-shot **`keycloak-bootstrap`** service runs
+`infra/keycloak/bootstrap/keycloak-bootstrap.py` automatically. It exists because Keycloak ≥ 24
+silently drops user attributes that the realm's User Profile does not declare, so a plain realm
+import loses the demo users' `department`. The bootstrap declares `department` as a managed,
+admin-editable User Profile attribute, re-applies `department=ITDLZ` to manager/contributor/
+viewer (admin stays department-less), verifies the token mapper and the `dms-admin-api`
+service-account roles, and fails loudly if anything is missing. It is idempotent — re-running it
+is always safe — and the backend only starts after it completes successfully.
+
+To check a running stack end to end (health, bootstrap idempotency, departments, token claims,
+admin-vs-viewer authorization), run the automated acceptance script:
+
+```bash
+bash verify-deployment.sh    # from infra/docker-compose
+```
 
 Once the containers are healthy:
 
@@ -137,8 +155,10 @@ After signing in through Keycloak, the app exposes the core document workflow:
   processing), and download. A 403 shows a clear access-denied message instead of content.
 - `/upload` — Upload form (file + title, type, parent folder, department); `POST /api/documents`.
 - `/search` — Full-text search over titles, EAP numbers, and OCR text.
-- `/admin` — Admin-only live view of Keycloak users/roles/departments, permission scopes, service
-  health, and repository counts.
+- `/admin` — Admin-only console: live view of Keycloak users/roles, permission scopes, service
+  health, and repository counts, plus department management — create departments, edit display
+  names, activate/deactivate, delete unreferenced ones, and assign a department to any user
+  (written straight to the user's Keycloak attribute).
 
 Every API call attaches the Keycloak Bearer token. The UI never hides content with CSS — it
 renders exactly what the backend returns and relies on 401/403 responses.
@@ -169,8 +189,37 @@ Authorization: Bearer <access_token>
 
 A successful response includes your username and `realm_access.roles` with `dms_viewer`. Manager,
 contributor, and viewer tokens also include `"department": "ITDLZ"` when the realm mapper is active.
+You can also decode the access token itself (e.g. paste it into a JWT decoder or
+`cut -d. -f2 | base64 -d`) — the `department` claim is present in the access token, the ID token,
+and the userinfo response. `verify-deployment.sh` checks this automatically.
 
 Public health check (no token): `GET http://localhost:8081/health` → `{"status":"ok"}`.
+
+## Departments
+
+Departments exist in three coupled places:
+
+1. **The registry** — the MongoDB `departments` collection is the source of truth for which
+   departments exist (`code`, `displayName`, `active`, timestamps). `ITDLZ` is seeded
+   automatically. Codes are normalized (upper-case, `A-Z0-9_-`) and unique.
+2. **Keycloak** — each user may carry a single-valued `department` attribute (a registry code),
+   declared as a managed User Profile attribute by the bootstrap so Keycloak keeps it. Only
+   administrators can edit it.
+3. **The JWT** — a protocol mapper on `dms-frontend` copies the attribute into the `department`
+   claim of access tokens, ID tokens, and userinfo; the backend RBAC uses that claim.
+
+An administrator creates a department on the `/admin` page (or `POST /api/admin/departments`)
+and assigns it to a user via the department dropdown in the users table (or
+`PUT /api/admin/users/{userId}/department`). Assignments only accept existing, **active**
+departments. Because the code is referenced by documents, folders, and ACLs, it is immutable
+and a referenced department cannot be deleted — deactivate it instead; deletion is only
+possible once nothing references it. A change of department shows up in the user's tokens
+after their next login or token refresh.
+
+Troubleshooting: if demo users lack a department or the claim is missing from tokens, check
+`docker compose logs keycloak-bootstrap` (Compose) or `kubectl -n dms logs job/keycloak-bootstrap`
+(Kubernetes) — the bootstrap verifies exactly these things and prints what is wrong. Re-running
+it is always safe: `docker compose run --rm keycloak-bootstrap`.
 
 ## API documentation
 
