@@ -15,14 +15,23 @@ import ApiErrorPanel from "../components/ApiErrorPanel";
 import OcrStatusBadge from "../components/OcrStatusBadge";
 
 const DOC_TYPES = ["report", "invoice", "contract", "scan", "letter", "other"];
+const UPLOAD_ROLES = ["dms_admin", "dms_department_manager", "dms_contributor"];
+
+function formatDmsRoles(roles) {
+  const dmsRoles = roles.filter((role) => role.startsWith("dms_"));
+  if (dmsRoles.length === 0) return "no DMS role";
+  return dmsRoles.map((role) => role.replace("dms_", "")).join(", ");
+}
 
 /**
  * Renders the document upload page.
  * @returns {JSX.Element}
  */
 const UploadPage = () => {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const department = user?.department ?? "—";
+  const hasUploadRole = UPLOAD_ROLES.some((role) => roles.includes(role));
+  const roleSummary = formatDmsRoles(roles);
   const [searchParams] = useSearchParams();
   const presetParent = searchParams.get("parentId");
 
@@ -79,6 +88,16 @@ const UploadPage = () => {
     setSubmitError(null);
     setResult(null);
 
+    if (!hasUploadRole) {
+      setSubmitError(
+        new ApiError(
+          403,
+          `You have ${roleSummary} role and cannot upload documents. Contact an administrator if you need contributor access.`,
+        ),
+      );
+      return;
+    }
+
     if (!file) {
       setSubmitError(new ApiError(400, "Please choose a file to upload."));
       return;
@@ -113,6 +132,19 @@ const UploadPage = () => {
         <h1 className="mt-2 text-3xl font-semibold text-text">Upload a document</h1>
       </div>
 
+      {!hasUploadRole && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
+          <p className="font-semibold">You cannot upload documents with your current role.</p>
+          <p className="mt-2">
+            Your current DMS role is <span className="font-medium">{roleSummary}</span>. Uploading
+            documents requires admin, department manager, or contributor access.
+          </p>
+          <p className="mt-2 text-amber-800">
+            Contact an administrator if you need contributor access.
+          </p>
+        </div>
+      )}
+
       {result && (
         <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-sm text-emerald-800">
           <p className="font-semibold">Upload complete — status {result.status}</p>
@@ -127,11 +159,16 @@ const UploadPage = () => {
       )}
 
       {submitError && (
-        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {submitError instanceof ApiError
-            ? submitError.detail || `Upload failed (${submitError.status}).`
-            : submitError.message || "Upload failed."}
-        </div>
+        <ApiErrorPanel
+          error={submitError}
+          title={submitError instanceof ApiError && submitError.isForbidden ? "Upload is not allowed for your role" : undefined}
+          message={
+            submitError instanceof ApiError && submitError.isForbidden
+              ? submitError.detail ||
+                "Your current role cannot upload documents. Contact an administrator if you need contributor access."
+              : undefined
+          }
+        />
       )}
 
       <form
@@ -222,10 +259,10 @@ const UploadPage = () => {
         <div>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !hasUploadRole}
             className="rounded-xl border border-border bg-primary px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-primary/90 disabled:opacity-60"
           >
-            {submitting ? "Uploading…" : "Upload document"}
+            {submitting ? "Uploading…" : hasUploadRole ? "Upload document" : "Upload disabled"}
           </button>
         </div>
       </form>

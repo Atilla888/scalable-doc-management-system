@@ -39,7 +39,7 @@ export default function ProtectedRoute({ requiredRole }) {
   }
 
   if (requiredRole && !hasRole(requiredRole)) {
-    return <Navigate to="/unauthorized" replace />;
+    return <Navigate to="/unauthorized" replace state={{ requiredRole }} />;
   }
 
   return <Outlet />;

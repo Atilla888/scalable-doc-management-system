@@ -16,10 +16,10 @@ function describe(error) {
     if (error.isForbidden) {
       return {
         code: "403",
-        title: "Access denied",
+        title: "Access denied by your role or permissions",
         message:
           error.detail ||
-          "You do not have permission to view this item. Contact your department manager if you need access.",
+          "Your current role or folder permissions do not allow this action. Contact an administrator if you need additional access.",
       };
     }
     if (error.isNotFound) {
@@ -54,15 +54,20 @@ function describe(error) {
  * @param {Object} props
  * @param {*} props.error The error to display.
  * @param {() => void} [props.onRetry] Optional retry handler; shows a button when set.
+ * @param {string} [props.title] Optional title override.
+ * @param {string} [props.message] Optional message override.
  * @returns {JSX.Element}
  */
-const ApiErrorPanel = ({ error, onRetry }) => {
-  const { code, title, message } = describe(error);
+const ApiErrorPanel = ({ error, onRetry, title, message }) => {
+  const described = describe(error);
+  const code = described.code;
+  const panelTitle = title || described.title;
+  const panelMessage = message || described.message;
   return (
     <div className="rounded-2xl border border-border bg-surface p-8 text-center shadow-sm">
       <p className="text-sm font-medium text-text-secondary">{code}</p>
-      <h2 className="mt-2 text-xl font-semibold text-text">{title}</h2>
-      <p className="mx-auto mt-3 max-w-md text-sm text-text-secondary">{message}</p>
+      <h2 className="mt-2 text-xl font-semibold text-text">{panelTitle}</h2>
+      <p className="mx-auto mt-3 max-w-md text-sm text-text-secondary">{panelMessage}</p>
       {onRetry && (
         <button
           onClick={onRetry}
